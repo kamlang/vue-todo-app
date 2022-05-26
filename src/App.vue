@@ -95,7 +95,7 @@ export default {
 </script>
 
 <template>
-  <div class="ui fluid main container">
+  <div class="ui main container">
     <div class="ui stackable pointing menu">
       <a
         v-for="todo in taskListArray"
@@ -105,19 +105,22 @@ export default {
       >
         <i class="tasks icon"></i>
         {{ todo }}
-        <div
+        <span
           v-if="todo == selectedTaskList"
           data-tooltip="Delete this task list"
           data-position="bottom center"
         >
-          <i class="close icon right floated" @click.stop="taskListToDelete = todo"></i>
-        </div>
+          <i class="delete icon" @click.stop="taskListToDelete = todo"></i>
+        </span>
       </a>
       <a class="item" v-if="creatingNewTaskList">
         <div class="ui action input">
           <input v-model="newTaskList" type="text" placeholder="New task list name..." />
-          <div class="ui button" @click="createTodo">
+          <div v-if="newTaskList" class="ui button" @click="createTodo">
             <i class="check icon"></i>
+          </div>
+          <div v-else class="ui button" @click="createTodo">
+            <i class="redo icon"></i>
           </div>
         </div>
       </a>

@@ -1,6 +1,6 @@
 <template>
   <a v-if="user" class="item" @click="logout">
-    <i class="sign-out icon"></i>Logout
+    <i class="sign out alternate icon"></i>Logout
   </a>
 </template>
 

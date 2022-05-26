@@ -1,10 +1,12 @@
 <script>
 import moment from "moment"
 import Error from "./Error.vue"
+import Calendar from "./Calendar.vue"
 import axios from "axios"
 export default {
   components: {
-    Error
+    Error,
+    Calendar
   },
   data() {
     return {
@@ -12,7 +14,9 @@ export default {
       tasks: [],
       newTask: "",
       showCompleted: false,
-      errorMessage: ""
+      errorMessage: "",
+      showCalendar: false,
+      dueDate: Date,
     }
   },
   props: {
@@ -25,6 +29,9 @@ export default {
         task.edit = false
         return task
       }).filter(task => task.completed === this.showCompleted)
+    },
+    formatedDueDate() {
+      return this.dueDate instanceof Date ? moment(this.dueDate).format("LL") : ""
     },
   },
   watch: {
@@ -50,6 +57,14 @@ export default {
     }
   },
   methods: {
+    setDueDate(date) {
+      this.dueDate = date
+      this.showCalendar = false
+    },
+    unSetDueDate() {
+      this.dueDate = Date
+      this.showCalendar = false
+    },
     async toggleTask(task) {
       task.completed = !task.completed
       await this.updateTask(task)
@@ -78,6 +93,7 @@ export default {
         const response = await axios.put("http://localhost:8080/addTask",
           {
             body: this.newTask,
+            duedate: this.dueDate instanceof Date ? this.dueDate.valueOf() : "",
             name: this.selectedTaskList
           },
           {
@@ -102,6 +118,7 @@ export default {
           {
             _id: task._id,
             body: task.body,
+            duedate: this.dueDate instanceof Date ? this.dueDate.valueOf() : "",
             completed: task.completed
           },
           {
@@ -143,15 +160,34 @@ export default {
           <div class="field">
             <label></label>
             <textarea
-              rows="2"
+              rows="8"
               data-test-id="task-input"
               v-model="newTask"
               placeholder="Add a task ..."
             ></textarea>
           </div>
+          <div
+            class="ui input left icon"
+            data-tooltip="Schedule task to a specific day"
+            @click="showCalendar = !showCalendar"
+          >
+            <i class="calendar icon floated"></i>
+            <input
+              :value="formatedDueDate"
+              @keydown.delete="unSetDueDate"
+              @keydown.esc="showCalendar = false"
+              type="text"
+              placeholder="Date/Time"
+            />
+          </div>
 
+          <Calendar
+            v-if="showCalendar"
+            @unSetDate="unSetDueDate"
+            @setDate="setDueDate"
+            :dueDate="dueDate"
+          ></Calendar>
           <button
-            data-test-id="task-submit"
             data-tooltip="Add a new task"
             class="ui button icon right floated"
             @click="addTask"
@@ -161,12 +197,12 @@ export default {
         </div>
       </div>
     </div>
-    <div class="ui segments secondary" v-for="tsk in formatedTask">
+    <div class="ui segment attached secondary" v-for="tsk in formatedTask">
       <div
         :class="tsk.completed ? 'completed' : 'notCompleted'"
-        class="ui segment"
+        class="ui segment vertically attached fitted"
       >Created on: {{ tsk.createdAt }}</div>
-      <div class="ui clearing segment">
+      <div class="ui clearing attached segment">
         <span v-if="!tsk.edit">
           <button
             class="ui icon button right floated"
@@ -196,16 +232,24 @@ export default {
           <div class="ui form">
             <div class="field">
               <label></label>
-              <textarea rows="2" v-model="tsk.body">
+              <textarea rows="6" v-model="tsk.body">
           {{ tsk.body }}
           </textarea>
             </div>
+            <button
+              data-tooltip="Cancel editing"
+              class="ui button icon right floated"
+              @click="tsk.edit = false"
+            >
+              <i class="redo icon"></i>
+            </button>
+
             <button
               data-tooltip="Update task"
               class="ui button icon right floated"
               @click="updateTask(tsk)"
             >
-              <i class="sync icon"></i>
+              <i class="check icon"></i>
             </button>
           </div>
         </span>
@@ -226,5 +270,15 @@ export default {
   float: right !important;
   margin-right: 0em !important;
   margin-left: 1em !important;
+}
+.icon[class*="right floated"] {
+  float: right !important;
+  margin-right: 0em !important;
+  margin-left: 1em !important;
+}
+.icon[class*="left floated"] {
+  float: left !important;
+  margin-left: 0em !important;
+  margin-right: 1em !important;
 }
 </style>

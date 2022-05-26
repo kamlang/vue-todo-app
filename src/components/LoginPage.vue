@@ -1,6 +1,6 @@
 <template>
   <a v-if="!user" class="item" @click="login">
-    <i class="sign-in icon"></i>Login
+    <i class="sign in alternate icon"></i>Login
   </a>
 </template>
 
