@@ -1,40 +1,31 @@
 <script>
 
 import Todos from "./components/Todos.vue"
-import Error from "./components/Error.vue"
 import TaskBar from "./components/TaskBar.vue"
 
 export default {
   components: {
     TaskBar,
     Todos,
-    Error,
   },
   data() {
     return {
       selectedTaskList: "",
-      errorMessage: "",
     }
   },
   methods: {
-    setSelectedTaskList(taskListName) {
-      this.selectedTaskList = taskListName
-
+    setSelectedTaskList(taskList) {
+      this.selectedTaskList = taskList
     }
   }
-
-
 }
 </script>
 
 <template>
-  <div class="ui main container">
-    <TaskBar @taskListSelected="setSelectedTaskList"></TaskBar>
-
-    <Error :errorMessage="errorMessage" @closed="errorMessage = ''"></Error>
-    <Todos :selectedTaskList="selectedTaskList"></Todos>
-  </div>
+  <TaskBar @taskListSelected="setSelectedTaskList"></TaskBar>
+  <Todos :selectedTaskList="selectedTaskList"></Todos>
 </template>
+
 <style scoped>
 .icon[class*="right floated"],
 .checkbox[class*="right floated"] {

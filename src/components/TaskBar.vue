@@ -12,18 +12,19 @@ export default {
   data() {
     return {
       taskListArray: [],
+      user: this.$auth0.user,
       selectedTaskList: "",
       taskListToDelete: "",
       newTaskListName: "",
       creatingNewTaskList: false,
     }
-
   },
 
   methods: {
     setSelectedTaskList(taskList) {
       this.$emit('taskListSelected', taskList)
       this.selectedTaskList = taskList
+      this.creatingNewTaskList = false
     },
     async CreateTaskList() {
       const accessToken = await this.$auth0.getAccessTokenSilently();
@@ -43,10 +44,8 @@ export default {
         this.taskListArray.push(this.newTaskListName)
         this.$emit('taskListSelected', newTaskListName)
         this.newTaskListName = ""
-        this.creatingNewTaskList = false
       } catch (e) {
-        this.newTaskListName = ""
-        this.creatingNewTaskList = false
+        console.log(e)
       }
     },
     async deleteTodo(todo) {
@@ -61,9 +60,8 @@ export default {
             "Content-type": "application/json; charset=UTF-8"
           },
         })
-        this.taskListArray = this.taskListArray.filter(td => td != todo)
         this.taskListToDelete = ""
-        this.$emit('taskListSelected', this.taskListArray[0])
+        setSelectedTaskList(this.taskListArray[0])
       } catch (e) {
         console.log(e)
       }
@@ -80,7 +78,8 @@ export default {
       });
       const data = await response.data
       this.taskListArray = data.map(item => item.name)
-      this.$emit('taskListSelected', this.taskListArray[0])
+      this.selectedTaskList = this.taskListArray[0]
+      this.$emit('taskListSelected', this.selectedTaskList)
     } catch (e) {
       console.log(e)
     }
@@ -90,7 +89,13 @@ export default {
 </script>
 
 <template>
-  <div class="ui stackable pointing menu">
+  <div class="ui taskmenu pointing menu">
+    <div class="left menu">
+      <div class="item">
+        <i class="user icon"></i>
+        {{ user.nickname }}
+      </div>
+    </div>
     <a
       v-for="taskList in taskListArray"
       class="item"
@@ -114,7 +119,7 @@ export default {
         <div v-if="newTaskListName" class="ui button" @click="CreateTaskList">
           <i class="check icon"></i>
         </div>
-        <div v-else class="ui button" @click="CreateTaskList">
+        <div v-else class="ui button" @click="creatingNewTaskList = !creatingNewTaskList">
           <i class="redo icon"></i>
         </div>
       </div>
@@ -123,7 +128,6 @@ export default {
     <a class="item" @click="creatingNewTaskList = !creatingNewTaskList">
       <i class="plus icon"></i> Add a new task list
     </a>
-
     <div class="right menu">
       <LoginPage></LoginPage>
       <LogoutPage></LogoutPage>
@@ -139,3 +143,10 @@ export default {
     </div>
   </div>
 </template>
+<style scoped>
+.taskmenu {
+  min-height: 50px;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+}
+</style>
