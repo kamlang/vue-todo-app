@@ -29,11 +29,11 @@ export default {
     toggleShowCompleted() {
       this.$emit('toggleShowCompleted', this.showCompleted)
     },
-    setDueDate(date) {
+    setDueDateHandler(date) {
       this.dueDate = date
       this.showCalendar = false
     },
-    unSetDueDate() {
+    unSetDueDateHandler() {
       this.dueDate = ""
       this.showCalendar = false
     },
@@ -93,7 +93,7 @@ export default {
         <i class="calendar icon floated"></i>
         <input
           :value="formatedDueDate"
-          @keydown.delete="unSetDueDate"
+          @keydown.delete="unSetDueDateHandler"
           @keydown.esc="showCalendar = false"
           type="text"
           placeholder="Date/Time"
@@ -102,8 +102,8 @@ export default {
 
       <Calendar
         v-if="showCalendar"
-        @unSetDate="unSetDueDate"
-        @setDate="setDueDate"
+        @unSetDate="unSetDueDateHandler"
+        @setDate="setDueDateHandler"
         :dueDate="dueDate"
       ></Calendar>
       <button

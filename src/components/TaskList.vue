@@ -2,9 +2,11 @@
 import moment from "moment"
 import TaskCreater from "./TaskCreater.vue"
 import axios from "axios"
+import Warning from "./Warning.vue"
 export default {
   components: {
-    TaskCreater
+    TaskCreater,
+    Warning
   },
   data() {
     return {
@@ -21,6 +23,7 @@ export default {
         task.createdAt = moment(task.createdAt).format("LLLL")
         task.edit = false
         task.selected = false
+        task.delete = false
         return task
       }).filter(task => task.completed === this.showCompleted)
     },
@@ -118,7 +121,7 @@ export default {
           @mouseleave="task.selected = false"
           class="ui clearing attached segment taskelement"
         >
-          <span v-if="task.selected && !task.edit">
+          <span v-if="task.selected && !task.edit && !task.delete">
             <button
               class="ui icon button right floated"
               :data-tooltip="task.completed ? 'Mark task as not completed' : 'Mark task as completed'"
@@ -129,7 +132,7 @@ export default {
             <button
               class="ui icon button right floated"
               data-tooltip="Delete task"
-              @click.stop="deleteTask(task)"
+              @click.stop="task.delete = true"
             >
               <i class="calendar minus icon"></i>
             </button>
@@ -142,7 +145,14 @@ export default {
               <i class="edit icon"></i>
             </button>
           </span>
-          <span v-if="!task.edit" style="white-space: pre-line;">{{ task.body }}</span>
+          <span v-if="!task.edit && !task.delete" style="white-space: pre-line;">{{ task.body }}</span>
+          <span v-if="task.delete" style="white-space: pre-line;">
+            <Warning
+              @yes="deleteTask(task)"
+              @No="task.delete = false"
+              :message="'Are you sure you want to delete this task ?'"
+            ></Warning>
+          </span>
 
           <span v-if="task.edit">
             <div class="ui form">

@@ -81,7 +81,6 @@ export default {
 .calendar {
   position: absolute !important;
   min-width: 250px !important;
-  top: 220px !important;
   z-index: 2;
 }
 .highlighted {

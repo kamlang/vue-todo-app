@@ -1,6 +1,7 @@
 <script>
 import LoginPage from "./LoginPage.vue"
 import LogoutPage from "./LogoutPage.vue"
+import Warning from "./Warning.vue"
 import axios from 'axios'
 
 export default {
@@ -8,6 +9,7 @@ export default {
   components: {
     LoginPage,
     LogoutPage,
+    Warning
   },
   data() {
     return {
@@ -43,10 +45,11 @@ export default {
         await response.data;
         this.taskListArray.push(this.newTaskListName)
         this.$emit('taskListSelected', newTaskListName)
-        this.newTaskListName = ""
       } catch (e) {
         console.log(e)
       }
+      this.newTaskListName = ""
+      this.creatingNewTaskList = false
     },
     async deleteTodo(todo) {
       const accessToken = await this.$auth0.getAccessTokenSilently();
@@ -61,6 +64,7 @@ export default {
           },
         })
         this.taskListToDelete = ""
+        this.taskListArray = this.taskListArray.filter(task => task != todo)
         setSelectedTaskList(this.taskListArray[0])
       } catch (e) {
         console.log(e)
@@ -89,7 +93,7 @@ export default {
 </script>
 
 <template>
-  <div class="ui taskmenu pointing menu">
+  <div class="ui taskmenu inverted pointing menu">
     <div class="left menu">
       <div class="item">
         <i class="user icon"></i>
@@ -104,11 +108,7 @@ export default {
     >
       <i class="tasks icon"></i>
       {{ taskList }}
-      <span
-        v-if="taskList == selectedTaskList"
-        data-tooltip="Delete this task list"
-        data-position="bottom center"
-      >
+      <span v-if="taskList == selectedTaskList" data-position="bottom center">
         <i class="delete icon" @click.stop="taskListToDelete = taskList"></i>
       </span>
     </a>
@@ -134,14 +134,13 @@ export default {
     </div>
   </div>
 
-  <div v-if="taskListToDelete" class="ui text container small icon negative message yellow">
-    <i class="delete icon"></i>
-    <div class="ui text container">
-      Are you sure you want to delete this todo list ?
-      <div class="ui right floated button" @click="taskListToDelete = ''">No</div>
-      <div class="ui right floated button" @click="deleteTodo(taskListToDelete)">Yes</div>
-    </div>
-  </div>
+  <Warning
+    class="ui text container"
+    v-if="taskListToDelete"
+    @No="taskListToDelete = ''"
+    @Yes="deleteTodo(taskListToDelete)"
+    :message="'Are you sure you want to delete this task list ?'"
+  ></Warning>
 </template>
 <style scoped>
 .taskmenu {
