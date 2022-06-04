@@ -1,51 +1,81 @@
 <template>
-  <div class="ui segment center aligned calendar">
-    <i class="icon angle left floated" @click="decMonth"></i>
-    <span>{{ getCleanDate(selectedMonth) }}</span>
-    <i class="icon angle right right floated" @click="incMonth"></i>
-    <table class="ui fourteen wide celled table unstackable">
-      <thead>
-        <tr>
-          <th class="two wide center aligned" v-for="item in computedCalendar.headers">{{ item }}</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr class="center aligned" v-for="line in computedCalendar.daysGrid">
-          <td
-            v-for="date in line"
-            :class="[isSelectable(date) ? 'selectable' : 'disabled', isTodayOrDueDate(date) && 'highlighted']"
-            v-on="isSelectable(date) ? { click: () => clickHandler(date) } : {}"
-            class="two wide"
-          >{{ date.getDate() }}</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+  <FadeTransition>
+    <div class="ui disabled action left icon input" @click.stop="showCalendar = !showCalendar">
+      <i class="calendar icon"></i>
+      <input
+        tabindex="-1"
+        :value="formatedDueDate"
+        @keydown.delete="unSetDueDate"
+        @keydown.esc="showCalendar = false"
+        type="text"
+        placeholder="Due date..."
+      />
+      <button v-if="formatedDueDate" @click.stop="unSetDueDate" class="ui icon button">
+        <i class="delete icon"></i>
+      </button>
+    </div>
+  </FadeTransition>
+  <FadeTransition>
+    <div v-if="showCalendar" class="ui segment center aligned calendaritem">
+      <i class="icon angle left floated" @click="decMonth"></i>
+      <span>{{ getCleanDate(selectedMonth) }}</span>
+      <i class="icon angle right right floated" @click="incMonth"></i>
+      <table class="ui celled table fixed unstackable">
+        <thead>
+          <tr>
+            <th class="center aligned" v-for="item in computedCalendar.headers">{{ item }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="line in computedCalendar.daysGrid">
+            <td
+              v-for="date in line"
+              :data-test-id="date.getDay()"
+              :class="[isSelectable(date) ? 'selectable' : 'disabled', isTodayOrDueDate(date) && 'highlighted']"
+              v-on="isSelectable(date) ? { click: () => setDueDate(date) } : {}"
+              class="center aligned"
+            >{{ date.getDate() }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </FadeTransition>
 </template>
 
 
 <script>
 import Calendar from "../calendar"
 import moment from "moment"
+import FadeTransition from "./FadeTransition.vue"
 export default {
-  emit: ['dateSet', 'unSerDate'],
+  components: {
+    FadeTransition
+  },
+  emits: ['dueDateSet'],
   data() {
     return {
       calendar: new Calendar(),
+      showCalendar: false,
+      dueDate: Date
     }
   },
   props: {
-    dueDate: Date
+    injectedDueDate: String
   },
-
   methods: {
-    clickHandler(selectedDate) {
-      if (this.dueDate instanceof Date && this.calendar.isSameDay(selectedDate, this.dueDate)) this.$emit('unSetDate')
-      else this.$emit('setDate', selectedDate)
+    setDueDate(selectedDate) {
+      this.dueDate = selectedDate
+      this.$emit('dueDateSet', this.dueDate.toString())
+      this.showCalendar = false
     },
-    getCleanDate(day) {
-      return moment(day).format("MMMM YY")
+    unSetDueDate() {
+      this.dueDate = ""
+      this.$emit('dueDateSet', '')
     },
+    getCleanDate(date) {
+      return moment(date).format("MMMM YY")
+    },
+
     isTodayOrDueDate(date) {
       let today = new Date()
       return this.dueDate instanceof Date ?
@@ -59,6 +89,7 @@ export default {
         date.getMonth() === this.selectedMonth.getMonth() ?
         true : false
     },
+
     incMonth() {
       this.calendar.incMonth()
     },
@@ -67,6 +98,14 @@ export default {
     },
   },
   computed: {
+    formatedDueDate() {
+      if (this.injectedDueDate) {
+        this.dueDate = new Date(this.injectedDueDate)
+        return moment(this.dueDate).format("LL")
+      } else {
+        return ""
+      }
+    },
     selectedMonth() {
       return this.calendar.getDate()
     },
@@ -78,17 +117,12 @@ export default {
 }
 </script>
 <style scoped>
-.calendar {
+.calendaritem {
   position: absolute !important;
-  min-width: 250px !important;
+  max-width: 300px;
   z-index: 2;
 }
-.highlighted {
-  background-color: rgb(252, 73, 112);
-}
-td.disabled {
-  color: #aaa;
-}
+
 .icon[class*="right floated"] {
   float: right !important;
   margin-right: 0em !important;
@@ -98,5 +132,16 @@ td.disabled {
   float: left !important;
   margin-left: 0em !important;
   margin-right: 1em !important;
+}
+.highlighted {
+  background-color: rgb(252, 73, 112);
+}
+td.disabled {
+  color: #aaa;
+}
+
+.calendaritem table td,
+th {
+  padding: 0.271429em 0.271429em !important;
 }
 </style>

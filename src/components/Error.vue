@@ -1,21 +1,24 @@
 <template>
-  <div v-if="errorMessage" class="ui text container tiny icon negative message">
+  <div data-test-id="errorMessage" class="ui fluid container small icon negative message">
     <i class="delete icon"></i>
     <i class="close icon" @click="$emit('closed')"></i>
-    <div class="ui text container">{{ errorMessage }}</div>
+    <div class="ui container">{{ errorMessage }}</div>
   </div>
 </template>
 
 <script>
 export default {
-  emits: {
-    closed() {
-      console.log("test")
-    }
-  },
+  emits: ['closed'],
   props: {
     errorMessage: String
   },
 }
-
 </script>
+
+<style scoped>
+.negative.message {
+  max-width: 700px;
+  margin-left: auto;
+  margin-right: auto;
+}
+</style>

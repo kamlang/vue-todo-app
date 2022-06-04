@@ -1,6 +1,6 @@
 export default class Calendar {
 
-  DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+  DAYS = ["S", "M", "T", "W", "T", "F", "S"]
 
   constructor () {
     this.date = new Date ()

@@ -1,27 +1,45 @@
 <script>
-
-import TaskList from "./components/TaskList.vue"
 import TaskBar from "./components/TaskBar.vue"
+import Error from "./components/Error.vue"
+import FadeTransition from "./components/FadeTransition.vue"
+import TaskList from "./components/TaskList.vue"
 
 export default {
   components: {
     TaskBar,
-    TaskList,
+    Error,
+    FadeTransition,
+    TaskList
   },
   data() {
     return {
-      selectedTaskList: "",
+      errorMessage: "",
+      isLoading: this.$auth0.isLoading,
+      isAuthenticated: this.$auth0.isAuthenticated,
+      selectedTaskList: ""
     }
   },
   methods: {
+    setErrorMessage(errorMessage) {
+      this.errorMessage = errorMessage
+    },
     setSelectedTaskList(taskList) {
       this.selectedTaskList = taskList
     }
-  }
+  },
 }
 </script>
 
 <template>
-  <TaskBar @taskListSelected="setSelectedTaskList"></TaskBar>
-  <TaskList :selectedTaskList="selectedTaskList"></TaskList>
+  <TaskBar @taskListSelected="setSelectedTaskList" @error="setErrorMessage"></TaskBar>
+  <FadeTransition>
+    <div style="margin-bottom: 16px;" v-if="errorMessage">
+      <Error @closed="errorMessage = ''" :errorMessage="errorMessage"></Error>
+    </div>
+  </FadeTransition>
+  <TaskList
+    @error="setErrorMessage"
+    v-if="isAuthenticated && !isLoading"
+    :selectedTaskList="selectedTaskList"
+  ></TaskList>
 </template>

@@ -2,27 +2,29 @@
 <script>
 import Calendar from "./Calendar.vue"
 import axios from "axios"
-import moment from "moment"
+import FadeTransition from "./FadeTransition.vue"
 export default {
-  emits: ['toggleShowCompleted'],
+  emits: ['toggleShowCompleted', 'newTaskCreated', 'error'],
   components: {
-    Calendar
+    Calendar,
+    FadeTransition
   },
   data() {
     return {
       newTask: "",
       showCompleted: false,
-      showCalendar: false,
       showTaskForm: false,
-      dueDate: Date
+      dueDate: "",
     }
   },
   props: {
     selectedTaskList: String
   },
-  computed: {
-    formatedDueDate() {
-      return this.dueDate instanceof Date ? moment(this.dueDate).format("LL") : ""
+  watch: {
+    selectedTaskList() {
+      this.showTaskForm = false
+      this.dueDate = ""
+      this.newTask = ""
     },
   },
   methods: {
@@ -31,19 +33,14 @@ export default {
     },
     setDueDateHandler(date) {
       this.dueDate = date
-      this.showCalendar = false
-    },
-    unSetDueDateHandler() {
-      this.dueDate = ""
-      this.showCalendar = false
     },
     async addTask() {
-      const accessToken = await this.$auth0.getAccessTokenSilently();
       try {
+        const accessToken = await this.$auth0.getAccessTokenSilently();
         const response = await axios.put("http://localhost:8080/addTask",
           {
             body: this.newTask,
-            duedate: this.dueDate instanceof Date ? this.dueDate.toString() : "",
+            dueDate: this.dueDate,
             name: this.selectedTaskList
           },
           {
@@ -54,6 +51,7 @@ export default {
           })
         const data = await response.data
         this.$emit('newTaskCreated', data)
+        this.$emit('error', '')
         this.newTask = ""
         this.dueDate = ""
       } catch (e) {
@@ -62,13 +60,18 @@ export default {
     },
   }
 }
-
 </script>
 
 <template>
-  <div class="ui segment" @click="showTaskForm = !showTaskForm">
+  <div
+    class="ui segment"
+    tabindex="0"
+    @keydown.space.prevent="showTaskForm = !showTaskForm"
+    @click="showTaskForm = !showTaskForm"
+  >
     <div
       :data-tooltip="showCompleted ? 'Hide completed tasks' : 'Show completed tasks'"
+      @keydown.space.stop="showCompleted = !showCompleted"
       class="ui toggle checkbox right floated"
       @click.stop="toggleShowCompleted"
     >
@@ -79,43 +82,25 @@ export default {
     <i v-else class="angle down icon"></i>
   </div>
 
-  <div v-if="showTaskForm" class="ui clearing segment">
-    <div class="ui form">
-      <div class="field">
-        <label></label>
-        <textarea rows="8" v-model="newTask" placeholder="Add a task ..."></textarea>
+  <FadeTransition>
+    <div v-if="showTaskForm" class="ui clearing segment">
+      <div class="ui form">
+        <div class="field">
+          <label></label>
+          <textarea rows="8" v-model="newTask" placeholder="Add a task ..."></textarea>
+        </div>
+        <Calendar :injectedDueDate="dueDate" @dueDateSet="setDueDateHandler"></Calendar>
+        <button
+          v-if="newTask"
+          data-tooltip="Add a new task"
+          class="ui button icon right floated"
+          @click="addTask"
+        >
+          <i class="calendar plus icon"></i>
+        </button>
       </div>
-      <div
-        class="ui input left icon"
-        data-tooltip="Schedule task to a specific day"
-        @click="showCalendar = !showCalendar"
-      >
-        <i class="calendar icon floated"></i>
-        <input
-          :value="formatedDueDate"
-          @keydown.delete="unSetDueDateHandler"
-          @keydown.esc="showCalendar = false"
-          type="text"
-          placeholder="Date/Time"
-        />
-      </div>
-
-      <Calendar
-        v-if="showCalendar"
-        @unSetDate="unSetDueDateHandler"
-        @setDate="setDueDateHandler"
-        :dueDate="dueDate"
-      ></Calendar>
-      <button
-        v-if="newTask"
-        data-tooltip="Add a new task"
-        class="ui button icon right floated"
-        @click="addTask"
-      >
-        <i class="calendar plus icon"></i>
-      </button>
     </div>
-  </div>
+  </FadeTransition>
 </template>
 
 <style scoped>

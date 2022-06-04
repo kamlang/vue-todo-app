@@ -3,22 +3,28 @@ import moment from "moment"
 import TaskCreater from "./TaskCreater.vue"
 import axios from "axios"
 import Warning from "./Warning.vue"
+import FadeTransition from "./FadeTransition.vue"
+import Calendar from "./Calendar.vue"
+
 export default {
+  emits: ['error'],
   components: {
     TaskCreater,
-    Warning
+    Calendar,
+    Warning,
+    FadeTransition
   },
   data() {
     return {
       tasks: [],
-      showCompleted: false
+      showCompleted: false,
     }
   },
   props: {
     selectedTaskList: String
   },
   computed: {
-    formatedTask() {
+    formatedTasks() {
       return this.tasks.map(task => {
         task.createdAt = moment(task.createdAt).format("LLLL")
         task.edit = false
@@ -31,37 +37,50 @@ export default {
   },
   watch: {
     async selectedTaskList() {
-      const accessToken = await this.$auth0.getAccessTokenSilently();
-      try {
-        const response = await axios.post("http://localhost:8080/getTasks",
-          {
-            name: this.selectedTaskList
-          },
-          {
-            headers: {
-              "Authorization": `Bearer ${accessToken}`,
-              "Content-type": "application/json; charset=UTF-8"
+      if (this.selectedTaskList) {
+        try {
+          const accessToken = await this.$auth0.getAccessTokenSilently();
+          const response = await axios.post("http://localhost:8080/getTasks",
+            {
+              name: this.selectedTaskList
             },
-          })
-        this.tasks = await response.data
-        this.newTask = ""
-      } catch (e) {
-        console.log(e)
+            {
+              headers: {
+                "Authorization": `Bearer ${accessToken}`,
+                "Content-type": "application/json; charset=UTF-8"
+              },
+            })
+          this.tasks = await response.data
+          this.newTask = ""
+        } catch (e) {
+          console.log(e)
+        }
       }
     }
   },
   methods: {
+    setDueDateHandler(date, task) {
+      task.origDueDate = task.dueDate
+      task.dueDate = date
+    },
+    setErrorMessage(errorMessage) {
+      this.$emit('error', errorMessage)
+    },
     async markTaskAsCompleted(task) {
       task.completed = !task.completed
       await this.updateTask(task)
+    },
+    async taskDeleteHandler(task) {
+      task.selected = false
+      setTimeout(() => task.delete = true, 300)
     },
 
     newTaskCreatedHandler(data) {
       this.tasks.unshift(data)
     },
     async deleteTask(task) {
-      const accessToken = await this.$auth0.getAccessTokenSilently();
       try {
+        const accessToken = await this.$auth0.getAccessTokenSilently();
         const repsonse = await axios.delete("http://localhost:8080/deleteTask", {
           data: {
             _id: task._id
@@ -77,13 +96,13 @@ export default {
       }
     },
     async updateTask(task) {
-      const accessToken = await this.$auth0.getAccessTokenSilently();
       try {
-        const response = await axios.patch("http://localhost:8080/updateTask",
+        const accessToken = await this.$auth0.getAccessTokenSilently();
+        await axios.patch("http://localhost:8080/updateTask",
           {
             _id: task._id,
             body: task.body,
-            duedate: this.dueDate instanceof Date ? this.dueDate.valueOf() : "",
+            dueDate: task.dueDate,
             completed: task.completed
           },
           {
@@ -92,8 +111,8 @@ export default {
               "Content-type": "application/json; charset=UTF-8"
             }
           });
-        await response.data
         task.edit = false
+        task.origDueDate = task.dueDate
       } catch (e) {
         console.log(e)
       }
@@ -103,84 +122,105 @@ export default {
 </script>
 
 <template>
-  <div class="ui text container">
+  <div v-if="selectedTaskList" class="ui text container">
     <div class="ui segments">
       <TaskCreater
         :selectedTaskList="selectedTaskList"
+        @error="setErrorMessage"
         @newTaskCreated="newTaskCreatedHandler"
         @toggleShowCompleted="showCompleted = !showCompleted"
       ></TaskCreater>
+      <TransitionGroup name="list">
+        <div class="ui segment attached secondary" v-for="task in formatedTasks" :key="task">
+          <div
+            :class="task.completed ? 'completed' : 'notCompleted'"
+            class="ui segment vertically attached fitted"
+          >Created on: {{ task.createdAt }}</div>
+          <div
+            data-test-id="taskBody"
+            @click="task.selected = !task.selected"
+            @touchstart="task.selected = !task.selected"
+            @mouseleave="task.selected = false"
+            class="ui clearing attached segment taskelement"
+          >
+            <FadeTransition>
+              <span v-if="task.selected && !task.edit && !task.delete">
+                <button
+                  tabindex="0"
+                  class="ui icon button right floated"
+                  :data-tooltip="task.completed ? 'Mark task as not completed' : 'Mark task as completed'"
+                  @click.stop="markTaskAsCompleted(task)"
+                >
+                  <i :class="task.completed ? 'redo icon' : 'calendar check icon'"></i>
+                </button>
+                <button
+                  tabindex="0"
+                  class="ui icon button right floated"
+                  data-tooltip="Delete task"
+                  @click.stop="taskDeleteHandler(task)"
+                >
+                  <i class="calendar minus icon"></i>
+                </button>
 
-      <div class="ui segment attached secondary" v-for="task in formatedTask">
-        <div
-          :class="task.completed ? 'completed' : 'notCompleted'"
-          class="ui segment vertically attached fitted"
-        >Created on: {{ task.createdAt }}</div>
-        <div
-          @click="task.selected = !task.selected"
-          @mouseleave="task.selected = false"
-          class="ui clearing attached segment taskelement"
-        >
-          <span v-if="task.selected && !task.edit && !task.delete">
-            <button
-              class="ui icon button right floated"
-              :data-tooltip="task.completed ? 'Mark task as not completed' : 'Mark task as completed'"
-              @click.stop="markTaskAsCompleted(task)"
-            >
-              <i :class="task.completed ? 'redo icon' : 'calendar check icon'"></i>
-            </button>
-            <button
-              class="ui icon button right floated"
-              data-tooltip="Delete task"
-              @click.stop="task.delete = true"
-            >
-              <i class="calendar minus icon"></i>
-            </button>
+                <button
+                  tabindex="0"
+                  class="ui icon button right floated"
+                  data-tooltip="Edit task"
+                  @click.stop="task.edit = !task.edit"
+                >
+                  <i class="edit icon"></i>
+                </button>
+              </span>
+            </FadeTransition>
+            <span v-if="!task.edit && !task.delete" style="white-space: pre-line;">{{ task.body }}</span>
+            <FadeTransition>
+              <span v-if="task.delete" style="white-space: pre-line;">
+                <Warning
+                  @yes="deleteTask(task)"
+                  @no="task.delete = false"
+                  :message="'Are you sure you want to delete this task ?'"
+                ></Warning>
+              </span>
+            </FadeTransition>
 
-            <button
-              class="ui icon button right floated"
-              data-tooltip="Edit task"
-              @click.stop="task.edit = !task.edit"
-            >
-              <i class="edit icon"></i>
-            </button>
-          </span>
-          <span v-if="!task.edit && !task.delete" style="white-space: pre-line;">{{ task.body }}</span>
-          <span v-if="task.delete" style="white-space: pre-line;">
-            <Warning
-              @yes="deleteTask(task)"
-              @No="task.delete = false"
-              :message="'Are you sure you want to delete this task ?'"
-            ></Warning>
-          </span>
-
-          <span v-if="task.edit">
-            <div class="ui form">
-              <div class="field">
-                <label></label>
-                <textarea rows="6" v-model="task.body">
+            <span v-if="task.edit">
+              <div class="ui form">
+                <div class="field">
+                  <label></label>
+                  <textarea rows="6" v-model="task.body">
           {{ task.body }}
           </textarea>
-              </div>
-              <button
-                data-tooltip="Cancel editing"
-                class="ui button icon right floated"
-                @click="task.edit = false"
-              >
-                <i class="redo icon"></i>
-              </button>
+                </div>
+                <Calendar
+                  :injectedDueDate="task.dueDate"
+                  @dueDateSet="(date) => {
+                    setDueDateHandler(date, task)
+                  }"
+                ></Calendar>
+                <button
+                  data-tooltip="Cancel editing"
+                  class="ui button icon right floated"
+                  @click="() => {
+                    task.edit = false
+                    task.origDueDate &&
+                      (task.dueDate = task.origDueDate)
+                  }"
+                >
+                  <i class="redo icon"></i>
+                </button>
 
-              <button
-                data-tooltip="Update task"
-                class="ui button icon right floated"
-                @click="updateTask(task)"
-              >
-                <i class="check icon"></i>
-              </button>
-            </div>
-          </span>
+                <button
+                  data-tooltip="Update task"
+                  class="ui button icon right floated"
+                  @click="updateTask(task)"
+                >
+                  <i class="check icon"></i>
+                </button>
+              </div>
+            </span>
+          </div>
         </div>
-      </div>
+      </TransitionGroup>
     </div>
   </div>
 </template>
@@ -192,7 +232,6 @@ export default {
 .notCompleted {
   background-color: rgb(252, 73, 112);
 }
-.icon[class*="right floated"],
 .icon[class*="right floated"] {
   float: right !important;
   margin-right: 0em !important;
@@ -205,5 +244,15 @@ export default {
 }
 .taskelement {
   min-height: 65px !important;
+}
+
+.list-enter-active,
+.list-leave-active {
+  transition: all 0.2s ease;
+}
+.list-enter-from,
+.list-leave-to {
+  opacity: 0;
+  transform: translateX(100px);
 }
 </style>

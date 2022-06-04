@@ -1,38 +1,55 @@
 <script>
-import LoginPage from "./LoginPage.vue"
-import LogoutPage from "./LogoutPage.vue"
 import Warning from "./Warning.vue"
 import axios from 'axios'
+import FadeTransition from './FadeTransition.vue'
+import Authentication from './Authentication.vue'
 
 export default {
-  emits: ['taskListSelected'],
+  emits: ['taskListSelected', 'error'],
   components: {
-    LoginPage,
-    LogoutPage,
+    FadeTransition,
+    Authentication,
     Warning
   },
   data() {
     return {
       taskListArray: [],
-      user: this.$auth0.user,
+      auth0User: this.$auth0.user,
+      isLoading: this.$auth0.isLoading,
+      isAuthenticated: this.$auth0.isAuthenticated,
       selectedTaskList: "",
       taskListToDelete: "",
       newTaskListName: "",
       creatingNewTaskList: false,
+      taskListToRename: ""
     }
   },
-
   methods: {
     setSelectedTaskList(taskList) {
-      this.$emit('taskListSelected', taskList)
       this.selectedTaskList = taskList
       this.creatingNewTaskList = false
+      this.$emit('taskListSelected', taskList)
+      this.$emit('error', '')
     },
-    async CreateTaskList() {
-      const accessToken = await this.$auth0.getAccessTokenSilently();
+    async newTaskListHandler() {
+      this.newTaskListName = ""
+      this.taskListToRename = ""
+      this.creatingNewTaskList = !this.creatingNewTaskList
+      await this.$nextTick()
+      this.$refs.newTaskNameInput.focus()
+    },
+    async renameTaskListHandler(taskList) {
+      this.newTaskListName = ""
+      this.taskListToRename = taskList
+      this.creatingNewTaskList = false
+      await this.$nextTick()
+      this.$refs.renameTaskListInput[0].focus()
+    },
+    async createTaskList() {
 
       try {
-        const response = await axios.put("http://localhost:8080/CreateTaskList",
+        const accessToken = await this.$auth0.getAccessTokenSilently();
+        const response = await axios.put("http://localhost:8080/createTaskList",
           {
             name: this.newTaskListName
           },
@@ -44,17 +61,41 @@ export default {
           })
         await response.data;
         this.taskListArray.push(this.newTaskListName)
-        this.$emit('taskListSelected', newTaskListName)
+        this.setSelectedTaskList(this.newTaskListName)
       } catch (e) {
         console.log(e)
+        this.$emit('error', e.response.data.message)
       }
       this.newTaskListName = ""
       this.creatingNewTaskList = false
     },
-    async deleteTodo(todo) {
-      const accessToken = await this.$auth0.getAccessTokenSilently();
+    async updateTaskList() {
       try {
-        await axios.delete("http://localhost:8080/deleteTodo", {
+        const accessToken = await this.$auth0.getAccessTokenSilently();
+        const response = await axios.patch("http://localhost:8080/updateTaskList",
+          {
+            name: this.selectedTaskList,
+            newName: this.newTaskListName
+          },
+          {
+            headers: {
+              "Authorization": `Bearer ${accessToken}`,
+              "Content-type": "application/json; charset=UTF-8"
+            },
+          })
+        await response.data;
+        this.taskListArray = this.taskListArray.map(task => task == this.selectedTaskList ? this.newTaskListName : task)
+      } catch (e) {
+        console.log(e)
+        this.$emit('error', e.response.data.message)
+      }
+      this.newTaskListName = ""
+      this.taskListToRename = ""
+    },
+    async deleteTaskList(todo) {
+      try {
+        const accessToken = await this.$auth0.getAccessTokenSilently();
+        await axios.delete("http://localhost:8080/deleteTaskList", {
           data: {
             name: todo
           },
@@ -65,82 +106,157 @@ export default {
         })
         this.taskListToDelete = ""
         this.taskListArray = this.taskListArray.filter(task => task != todo)
-        setSelectedTaskList(this.taskListArray[0])
+        this.setSelectedTaskList(this.taskListArray[0])
+      } catch (e) {
+        console.log(e)
+      }
+    },
+    async getTaskList() {
+      try {
+        const accessToken = await this.$auth0.getAccessTokenSilently();
+        const response = await axios.get("http://localhost:8080/getTaskList", {
+          headers: {
+            "Authorization": `Bearer ${accessToken}`,
+            "Content-type": "application/json; charset=UTF-8"
+          }
+        });
+        const data = await response.data
+        this.taskListArray = data.map(item => item.name)
+        this.setSelectedTaskList(this.taskListArray[0])
       } catch (e) {
         console.log(e)
       }
     }
   },
   async mounted() {
-    const accessToken = await this.$auth0.getAccessTokenSilently();
-    try {
-      const response = await axios.get("http://localhost:8080/getTodos", {
-        headers: {
-          "Authorization": `Bearer ${accessToken}`,
-          "Content-type": "application/json; charset=UTF-8"
-        }
-      });
-      const data = await response.data
-      this.taskListArray = data.map(item => item.name)
-      this.selectedTaskList = this.taskListArray[0]
-      this.$emit('taskListSelected', this.selectedTaskList)
-    } catch (e) {
-      console.log(e)
+    while (this.isLoading) {
+      await new Promise((res) => setTimeout(() => {
+        console.log("Waiting for authentification....")
+        res()
+      }, 200))
     }
+    if (this.isAuthenticated) await this.getTaskList()
   }
 }
 
 </script>
 
 <template>
-  <div class="ui taskmenu inverted pointing menu">
-    <div class="left menu">
+  <div tabindex="-1" class="ui taskmenu inverted menu">
+    <div v-if="auth0User" class="left menu">
       <div class="item">
         <i class="user icon"></i>
-        {{ user.nickname }}
+        {{ auth0User.nickname }}
       </div>
     </div>
-    <a
-      v-for="taskList in taskListArray"
-      class="item"
-      @click="setSelectedTaskList(taskList)"
-      :class="selectedTaskList == taskList && 'active'"
-    >
-      <i class="tasks icon"></i>
-      {{ taskList }}
-      <span v-if="taskList == selectedTaskList" data-position="bottom center">
-        <i class="delete icon" @click.stop="taskListToDelete = taskList"></i>
-      </span>
-    </a>
+    <div v-if="auth0User" class="center menu">
+      <a
+        tabindex="0"
+        data-test-id="deleteTaskList"
+        class="item"
+        @click="taskListToDelete = selectedTaskList"
+        @keydown.space.prevent="taskListToDelete = selectedTaskList"
+        v-if="selectedTaskList"
+      >
+        <i class="delete icon"></i>
+      </a>
 
-    <a class="item" v-if="creatingNewTaskList">
-      <div class="ui action input">
-        <input v-model="newTaskListName" type="text" placeholder="New task list name..." />
-        <div v-if="newTaskListName" class="ui button" @click="CreateTaskList">
-          <i class="check icon"></i>
-        </div>
-        <div v-else class="ui button" @click="creatingNewTaskList = !creatingNewTaskList">
-          <i class="redo icon"></i>
-        </div>
-      </div>
-    </a>
-
-    <a class="item" @click="creatingNewTaskList = !creatingNewTaskList">
-      <i class="plus icon"></i> Add a new task list
-    </a>
+      <a
+        class="item"
+        v-for="(taskList) in taskListArray"
+        data-test-id="taskListName"
+        @click="setSelectedTaskList(taskList)"
+        @keydown.space.prevent="setSelectedTaskList(taskList)"
+        @dblclick="renameTaskListHandler(taskList)"
+        @keydown.enter="renameTaskListHandler(taskList)"
+        :class="selectedTaskList == taskList && 'active'"
+        tabindex="0"
+      >
+        <i class="tasks icon"></i>
+        <FadeTransition>
+          <div v-if="taskListToRename === taskList" class="ui action input">
+            <input
+              ref="renameTaskListInput"
+              data-test-id="inputNewTaskName"
+              v-model="newTaskListName"
+              type="text"
+              :placeholder="taskList"
+              @keydown.esc="taskListToRename = ''"
+              @keydown.delete.stop
+              @keydown.space.stop
+              @keydown.enter.stop="newTaskListName ? updateTaskList() : taskListToRename = ''"
+              @click.stop
+            />
+            <div
+              v-if="newTaskListName"
+              data-test-id="confirmNewName"
+              class="ui button"
+              @click.stop="updateTaskList"
+            >
+              <i class="check icon"></i>
+            </div>
+            <div
+              v-else
+              class="ui button"
+              data-test-id="cancelNewName"
+              @click.stop="taskListToRename = ''"
+            >
+              <i class="delete icon"></i>
+            </div>
+          </div>
+          <div v-else>{{ taskList }}</div>
+        </FadeTransition>
+      </a>
+      <a
+        class="item"
+        data-test-id="createNewTaskListButton"
+        tabindex="0"
+        @click="newTaskListHandler"
+        @keydown.space.prevent="newTaskListHandler"
+      >
+        <FadeTransition>
+          <div v-if="creatingNewTaskList" class="ui action input">
+            <input
+              ref="newTaskNameInput"
+              @click.stop
+              data-test-id="createNewTaskListInput"
+              v-model="newTaskListName"
+              type="text"
+              placeholder="New task list name..."
+              @keydown.delete="!newTaskListName && (creatingNewTaskList = false)"
+              @keydown.esc="creatingNewTaskList = false"
+              @keydown.space.stop
+              @keydown.enter="newTaskListName ? createTaskList() : creatingNewTaskList = false"
+            />
+            <div
+              v-if="newTaskListName"
+              data-test-id="validateTaskListNameButton"
+              class="ui button"
+              @click.stop="createTaskList"
+            >
+              <i class="check icon"></i>
+            </div>
+            <div v-else class="ui button" @click.stop="creatingNewTaskList = false">
+              <i class="delete icon"></i>
+            </div>
+          </div>
+        </FadeTransition>
+        <i v-if="!creatingNewTaskList" class="plus icon"></i>
+      </a>
+    </div>
     <div class="right menu">
-      <LoginPage></LoginPage>
-      <LogoutPage></LogoutPage>
+      <Authentication></Authentication>
     </div>
   </div>
-
-  <Warning
-    class="ui text container"
-    v-if="taskListToDelete"
-    @No="taskListToDelete = ''"
-    @Yes="deleteTodo(taskListToDelete)"
-    :message="'Are you sure you want to delete this task list ?'"
-  ></Warning>
+  <FadeTransition>
+    <div style="margin-bottom: 16px;" v-if="taskListToDelete">
+      <Warning
+        @no="taskListToDelete = ''"
+        @yes="deleteTaskList(taskListToDelete)"
+        :message="'Are you sure you want to delete task list ' + taskListToDelete + '?'"
+      ></Warning>
+    </div>
+  </FadeTransition>
 </template>
 <style scoped>
 .taskmenu {
