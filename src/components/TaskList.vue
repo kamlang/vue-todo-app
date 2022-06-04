@@ -78,6 +78,7 @@ export default {
     newTaskCreatedHandler(data) {
       this.tasks.unshift(data)
     },
+
     async deleteTask(task) {
       try {
         const accessToken = await this.$auth0.getAccessTokenSilently();
@@ -131,7 +132,12 @@ export default {
         @toggleShowCompleted="showCompleted = !showCompleted"
       ></TaskCreater>
       <TransitionGroup name="list">
-        <div class="ui segment attached secondary" v-for="task in formatedTasks" :key="task">
+        <div
+          class="ui segment attached secondary"
+          v-for="task in formatedTasks"
+          :key="task"
+          :class="task.selected && 'taskelement-active'"
+        >
           <div
             :class="task.completed ? 'completed' : 'notCompleted'"
             class="ui segment vertically attached fitted"
@@ -141,6 +147,7 @@ export default {
             @click="task.selected = !task.selected"
             @touchstart="task.selected = !task.selected"
             @mouseleave="task.selected = false"
+            :class="task.selected && 'taskelement-active'"
             class="ui clearing attached segment taskelement"
           >
             <FadeTransition>
@@ -244,6 +251,11 @@ export default {
 }
 .taskelement {
   min-height: 65px !important;
+  opacity: 0.8;
+}
+
+.taskelement-active {
+  opacity: 1;
 }
 
 .list-enter-active,
