@@ -84,9 +84,10 @@ export default {
             },
           })
         await response.data;
+        console.log(response)
         this.taskListArray = this.taskListArray.map(task => task == this.selectedTaskList ? this.newTaskListName : task)
       } catch (e) {
-        console.log(e)
+        console.log(e.response.data.message)
         this.$emit('error', e.response.data.message)
       }
       this.newTaskListName = ""
@@ -190,14 +191,14 @@ export default {
             <div
               v-if="newTaskListName"
               data-test-id="confirmNewName"
-              class="ui button"
+              class="ui icon button"
               @click.stop="updateTaskList"
             >
               <i class="check icon"></i>
             </div>
             <div
               v-else
-              class="ui button"
+              class="ui icon button"
               data-test-id="cancelNewName"
               @click.stop="taskListToRename = ''"
             >
@@ -231,12 +232,12 @@ export default {
             <div
               v-if="newTaskListName"
               data-test-id="validateTaskListNameButton"
-              class="ui button"
+              class="ui icon button"
               @click.stop="createTaskList"
             >
               <i class="check icon"></i>
             </div>
-            <div v-else class="ui button" @click.stop="creatingNewTaskList = false">
+            <div v-else class="ui icon button" @click.stop="creatingNewTaskList = false">
               <i class="delete icon"></i>
             </div>
           </div>

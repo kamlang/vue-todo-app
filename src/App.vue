@@ -31,15 +31,17 @@ export default {
 </script>
 
 <template>
-  <TaskBar @taskListSelected="setSelectedTaskList" @error="setErrorMessage"></TaskBar>
-  <FadeTransition>
-    <div style="margin-bottom: 16px;" v-if="errorMessage">
-      <Error @closed="errorMessage = ''" :errorMessage="errorMessage"></Error>
-    </div>
-  </FadeTransition>
-  <TaskList
-    @error="setErrorMessage"
-    v-if="isAuthenticated && !isLoading"
-    :selectedTaskList="selectedTaskList"
-  ></TaskList>
+  <div class="ui fluid main container">
+    <TaskBar @taskListSelected="setSelectedTaskList" @error="setErrorMessage"></TaskBar>
+    <FadeTransition>
+      <div style="margin-bottom: 16px;" v-if="errorMessage">
+        <Error @closed="errorMessage = ''" :errorMessage="errorMessage"></Error>
+      </div>
+    </FadeTransition>
+    <TaskList
+      @error="setErrorMessage"
+      v-if="isAuthenticated && !isLoading"
+      :selectedTaskList="selectedTaskList"
+    ></TaskList>
+  </div>
 </template>

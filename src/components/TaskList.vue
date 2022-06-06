@@ -18,22 +18,11 @@ export default {
     return {
       tasks: [],
       showCompleted: false,
+      draggedIndex: ""
     }
   },
   props: {
     selectedTaskList: String
-  },
-  computed: {
-    formatedTasks() {
-      return this.tasks.map(task => {
-        task.createdAt = moment(task.createdAt).format("LLLL")
-        task.edit = false
-        task.selected = false
-        task.delete = false
-        return task
-      }).filter(task => task.completed === this.showCompleted)
-    },
-
   },
   watch: {
     async selectedTaskList() {
@@ -59,6 +48,9 @@ export default {
     }
   },
   methods: {
+    formatedDate(date) {
+      return moment(date).format("LLLL")
+    },
     setDueDateHandler(date, task) {
       task.origDueDate = task.dueDate
       task.dueDate = date
@@ -66,15 +58,38 @@ export default {
     setErrorMessage(errorMessage) {
       this.$emit('error', errorMessage)
     },
-    async markTaskAsCompleted(task) {
+    markTaskAsCompleted(task) {
       task.completed = !task.completed
-      await this.updateTask(task)
+      this.updateTask(task)
     },
-    async taskDeleteHandler(task) {
+    taskDeleteHandler(task) {
       task.selected = false
-      setTimeout(() => task.delete = true, 300)
+      task.delete = true
     },
-
+    handleDragEnter(index, event) {
+      this.tasks = this.tasks.map(t => {
+        t.isDragTarget = false
+        return t
+      })
+      this.tasks[index].isDragTarget = true
+    },
+    handleDragStart(index, event) {
+      console.log(index)
+      this.draggedIndex = index
+    },
+    handleDropOver(index, event) {
+      if (this.draggedIndex < index) index += 1
+      let taskToInsert = this.tasks[this.draggedIndex]
+      let arr1 = this.tasks.slice(0, index).filter(task => task !== taskToInsert)
+      arr1.push(taskToInsert)
+      let arr2 = this.tasks.slice(index,).filter(task => task !== taskToInsert)
+      this.tasks = arr1.concat(arr2)
+      this.draggedIndex = ""
+      this.tasks = this.tasks.map(t => {
+        t.isDragTarget = false
+        return t
+      })
+    },
     newTaskCreatedHandler(data) {
       this.tasks.unshift(data)
     },
@@ -82,7 +97,7 @@ export default {
     async deleteTask(task) {
       try {
         const accessToken = await this.$auth0.getAccessTokenSilently();
-        const repsonse = await axios.delete("http://localhost:8080/deleteTask", {
+        await axios.delete("http://localhost:8080/deleteTask", {
           data: {
             _id: task._id
           },
@@ -118,7 +133,7 @@ export default {
         console.log(e)
       }
     }
-  }
+  },
 }
 </script>
 
@@ -134,19 +149,36 @@ export default {
       <TransitionGroup name="list">
         <div
           class="ui segment attached secondary"
-          v-for="task in formatedTasks"
-          :key="task"
+          v-for="(task,index) in tasks"
+          @dragstart="event => handleDragStart(index, event)"
+          @dragover.prevent
+          @dragend="task.isDragTarget = false"
+          @drop.prevent="event => handleDropOver(index, event)"
+          @dragenter="event => handleDragEnter(index, event)"
+          @click="task.selected = !task.selected"
+          @touchstart="task.selected = !task.selected"
+          @mouseleave="task.selected = false"
+          :style="[task.isDragTarget ? 'border-width: 10px !important' : 'border-width: 1px']"
+          :hidden="task.completed !== showCompleted"
+          :key="index"
           :class="task.selected && 'taskelement-active'"
+          :draggable="task.draggable"
         >
           <div
             :class="task.completed ? 'completed' : 'notCompleted'"
-            class="ui segment vertically attached fitted"
-          >Created on: {{ task.createdAt }}</div>
+            class="ui segment vertically attached"
+          >
+            Created on: {{ formatedDate(task.createdAt) }}
+            <i
+              style="min-width: 25px;min-height: 25px;padding:5px;margin:0px"
+              @click.prevent
+              @mouseenter="task.draggable = true"
+              @mouseleave="task.draggable = false"
+              class="window restore icon right floated"
+            ></i>
+          </div>
           <div
-            data-test-id="taskBody"
-            @click="task.selected = !task.selected"
-            @touchstart="task.selected = !task.selected"
-            @mouseleave="task.selected = false"
+            :data-test-id="'taskBody-' + index"
             :class="task.selected && 'taskelement-active'"
             class="ui clearing attached segment taskelement"
           >
@@ -154,6 +186,7 @@ export default {
               <span v-if="task.selected && !task.edit && !task.delete">
                 <button
                   tabindex="0"
+                  data-test-id="markAsCompletedButton"
                   class="ui icon button right floated"
                   :data-tooltip="task.completed ? 'Mark task as not completed' : 'Mark task as completed'"
                   @click.stop="markTaskAsCompleted(task)"
@@ -162,6 +195,7 @@ export default {
                 </button>
                 <button
                   tabindex="0"
+                  data-test-id="deleteTaskButton"
                   class="ui icon button right floated"
                   data-tooltip="Delete task"
                   @click.stop="taskDeleteHandler(task)"
@@ -171,6 +205,7 @@ export default {
 
                 <button
                   tabindex="0"
+                  data-test-id="editTaskButton"
                   class="ui icon button right floated"
                   data-tooltip="Edit task"
                   @click.stop="task.edit = !task.edit"
@@ -194,7 +229,7 @@ export default {
               <div class="ui form">
                 <div class="field">
                   <label></label>
-                  <textarea rows="6" v-model="task.body">
+                  <textarea data-test-id="editInputBox" rows="6" v-model="task.body">
           {{ task.body }}
           </textarea>
                 </div>
@@ -206,6 +241,7 @@ export default {
                 ></Calendar>
                 <button
                   data-tooltip="Cancel editing"
+                  data-test-id="cancelEditButton"
                   class="ui button icon right floated"
                   @click="() => {
                     task.edit = false
@@ -218,6 +254,7 @@ export default {
 
                 <button
                   data-tooltip="Update task"
+                  data-test-id="confirmEditButton"
                   class="ui button icon right floated"
                   @click="updateTask(task)"
                 >
