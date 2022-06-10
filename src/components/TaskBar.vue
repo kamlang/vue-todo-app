@@ -21,7 +21,16 @@ export default {
       taskListToDelete: "",
       newTaskListName: "",
       creatingNewTaskList: false,
-      taskListToRename: ""
+      taskListToRename: "",
+      draggedIndex: ""
+    }
+  },
+  watch: {
+    isAuthenticated: {
+      handler() {
+        if (this.isAuthenticated) this.getTaskList()
+      },
+      immediate: true
     }
   },
   methods: {
@@ -45,6 +54,57 @@ export default {
       await this.$nextTick()
       this.$refs.renameTaskListInput[0].focus()
     },
+
+    unSetDragTarget() {
+      this.taskListArray = this.taskListArray.map(t => {
+        t.isDragTarget = false
+        return t
+      })
+    },
+    handleDragStart(index) {
+      this.draggedIndex = index
+    },
+    handleDragEnter(index) {
+      this.taskListArray[index].isDragTarget = true
+    },
+    handleDropOver(index) {
+
+      if (this.draggedIndex === '') {
+        this.unSetDragTarget()
+        return
+      }
+      if (this.draggedIndex < index) index += 1
+      if (this.draggedIndex != index) {
+        let taskListToInsert = this.taskListArray[this.draggedIndex]
+        let arr1 = this.taskListArray.slice(0, index).filter(taskList => taskList !== taskListToInsert)
+        arr1.push(taskListToInsert)
+        let arr2 = this.taskListArray.slice(index,).filter(taskList => taskList !== taskListToInsert)
+        this.taskListArray = arr1.concat(arr2)
+        this.updateTaskListOrder()
+        this.unSetDragTarget()
+      }
+    },
+    handleDragEnd() {
+      this.unSetDragTarget()
+      this.draggedIndex = ""
+    },
+    async updateTaskListOrder() {
+      try {
+        const accessToken = await this.$auth0.getAccessTokenSilently();
+        await axios.patch("http://localhost:8080/updateTaskListOrder",
+          {
+            taskLists: this.taskListArray.map(taskList => taskList._id)
+          },
+          {
+            headers: {
+              "Authorization": `Bearer ${accessToken}`,
+              "Content-type": "application/json; charset=UTF-8"
+            }
+          });
+      } catch (e) {
+        console.log(e)
+      }
+    },
     async createTaskList() {
 
       try {
@@ -60,7 +120,7 @@ export default {
             },
           })
         await response.data;
-        this.taskListArray.push(this.newTaskListName)
+        this.taskListArray.push({ name: this.newTaskListName })
         this.setSelectedTaskList(this.newTaskListName)
       } catch (e) {
         console.log(e)
@@ -85,7 +145,12 @@ export default {
           })
         await response.data;
         console.log(response)
-        this.taskListArray = this.taskListArray.map(task => task == this.selectedTaskList ? this.newTaskListName : task)
+        this.taskListArray = this.taskListArray.map(taskList => {
+          if (taskList.name == this.selectedTaskList) {
+            taskList.name = this.newTaskListName
+          }
+          return taskList
+        })
       } catch (e) {
         console.log(e.response.data.message)
         this.$emit('error', e.response.data.message)
@@ -93,12 +158,12 @@ export default {
       this.newTaskListName = ""
       this.taskListToRename = ""
     },
-    async deleteTaskList(todo) {
+    async deleteTaskList(taskList) {
       try {
         const accessToken = await this.$auth0.getAccessTokenSilently();
         await axios.delete("http://localhost:8080/deleteTaskList", {
           data: {
-            name: todo
+            name: taskList
           },
           headers: {
             "Authorization": `Bearer ${accessToken}`,
@@ -106,7 +171,8 @@ export default {
           },
         })
         this.taskListToDelete = ""
-        this.taskListArray = this.taskListArray.filter(task => task != todo)
+        this.taskListArray = this.taskListArray.filter(t => t.name != taskList
+        )
         this.setSelectedTaskList(this.taskListArray[0])
       } catch (e) {
         console.log(e)
@@ -121,36 +187,27 @@ export default {
             "Content-type": "application/json; charset=UTF-8"
           }
         });
-        const data = await response.data
-        this.taskListArray = data.map(item => item.name)
-        this.setSelectedTaskList(this.taskListArray[0])
+        this.taskListArray = await response.data
+        //        this.taskListArray = data.map(item => item.name)
+        this.setSelectedTaskList(this.taskListArray[0].name)
       } catch (e) {
         console.log(e)
       }
     }
   },
-  async mounted() {
-    while (this.isLoading) {
-      await new Promise((res) => setTimeout(() => {
-        console.log("Waiting for authentification....")
-        res()
-      }, 200))
-    }
-    if (this.isAuthenticated) await this.getTaskList()
-  }
 }
 
 </script>
 
 <template>
   <div tabindex="-1" class="ui taskmenu inverted menu">
-    <div v-if="auth0User" class="left menu">
+    <div v-if="isAuthenticated" class="left menu">
       <div class="item">
         <i class="user icon"></i>
         {{ auth0User.nickname }}
       </div>
     </div>
-    <div v-if="auth0User" class="center menu">
+    <div v-if="isAuthenticated" class="center menu">
       <a
         tabindex="0"
         data-test-id="deleteTaskList"
@@ -162,26 +219,33 @@ export default {
         <i class="delete icon"></i>
       </a>
 
-      <a
-        class="item"
-        v-for="(taskList) in taskListArray"
+      <div
+        class="link item taskList"
+        v-for="(taskList,index) in taskListArray"
         data-test-id="taskListName"
-        @click="setSelectedTaskList(taskList)"
-        @keydown.space.prevent="setSelectedTaskList(taskList)"
-        @dblclick="renameTaskListHandler(taskList)"
-        @keydown.enter="renameTaskListHandler(taskList)"
-        :class="selectedTaskList == taskList && 'active'"
+        @click.prevent="setSelectedTaskList(taskList.name)"
+        @dblclick="renameTaskListHandler(taskList.name)"
+        @keydown.space.prevent="setSelectedTaskList(taskList.name)"
+        @keydown.enter="renameTaskListHandler(taskList.name)"
+        @dragover.prevent
+        @dragstart="handleDragStart(index)"
+        @drop.prevent="handleDropOver(index)"
+        @dragenter="handleDragEnter(index)"
+        @dragend="handleDragEnd"
+        @dragexit="taskList.isDragTarget = false"
+        :class="selectedTaskList == taskList.name && 'active'"
+        :style="[taskList.isDragTarget ? 'border-left: 2px solid' : 'border-left: 1px']"
         tabindex="0"
+        draggable="true"
       >
-        <i class="tasks icon"></i>
         <FadeTransition>
-          <div v-if="taskListToRename === taskList" class="ui action input">
+          <div v-if="taskListToRename === taskList.name" class="ui action input">
             <input
               ref="renameTaskListInput"
               data-test-id="inputNewTaskName"
               v-model="newTaskListName"
               type="text"
-              :placeholder="taskList"
+              :placeholder="taskList.name"
               @keydown.esc="taskListToRename = ''"
               @keydown.delete.stop
               @keydown.space.stop
@@ -205,9 +269,12 @@ export default {
               <i class="delete icon"></i>
             </div>
           </div>
-          <div v-else>{{ taskList }}</div>
+          <span v-else draggable>
+            <i class="tasks icon"></i>
+            {{ taskList.name }} ({{ taskList.tasks.length }})
+          </span>
         </FadeTransition>
-      </a>
+      </div>
       <a
         class="item"
         data-test-id="createNewTaskListButton"

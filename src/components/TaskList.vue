@@ -26,6 +26,7 @@ export default {
   },
   watch: {
     async selectedTaskList() {
+      this.tasks = []
       if (this.selectedTaskList) {
         try {
           const accessToken = await this.$auth0.getAccessTokenSilently();
@@ -48,6 +49,12 @@ export default {
     }
   },
   methods: {
+    cancelEditTask(task) {
+      task.selected = false
+      task.edit = false
+      task.origDueDate && (task.dueDate = task.origDueDate)
+    },
+
     formatedDate(date) {
       return moment(date).format("LLLL")
     },
@@ -66,34 +73,66 @@ export default {
       task.selected = false
       task.delete = true
     },
-    handleDragEnter(index, event) {
-      this.tasks = this.tasks.map(t => {
-        t.isDragTarget = false
-        return t
-      })
+    handleDragEnter(index) {
       this.tasks[index].isDragTarget = true
     },
-    handleDragStart(index, event) {
-      console.log(index)
+    handleDragStart(index) {
       this.draggedIndex = index
     },
-    handleDropOver(index, event) {
-      if (this.draggedIndex < index) index += 1
-      let taskToInsert = this.tasks[this.draggedIndex]
-      let arr1 = this.tasks.slice(0, index).filter(task => task !== taskToInsert)
-      arr1.push(taskToInsert)
-      let arr2 = this.tasks.slice(index,).filter(task => task !== taskToInsert)
-      this.tasks = arr1.concat(arr2)
-      this.draggedIndex = ""
+    pushTaskTop(index) {
+      let taskToPush = this.tasks[index]
+      taskToPush.selected = false
+      this.tasks.splice(index, 1)
+      this.tasks.unshift(taskToPush)
+      this.updateTaskOrder()
+    },
+    unSetDragTarget() {
       this.tasks = this.tasks.map(t => {
         t.isDragTarget = false
         return t
       })
+    },
+    handleDropOver(index) {
+      if (this.draggedIndex === '') {
+        this.unSetDragTarget()
+        return
+      }
+      if (this.draggedIndex < index) index += 1
+      if (this.draggedIndex != index) {
+        let taskToInsert = this.tasks[this.draggedIndex]
+        let arr1 = this.tasks.slice(0, index).filter(task => task !== taskToInsert)
+        arr1.push(taskToInsert)
+        let arr2 = this.tasks.slice(index,).filter(task => task !== taskToInsert)
+        this.tasks = arr1.concat(arr2)
+        this.updateTaskOrder()
+        this.unSetDragTarget()
+      }
+    },
+    handleDragEnd() {
+      this.unSetDragTarget()
+      this.draggedIndex = ""
     },
     newTaskCreatedHandler(data) {
       this.tasks.unshift(data)
     },
-
+    async updateTaskOrder() {
+      try {
+        const accessToken = await this.$auth0.getAccessTokenSilently();
+        await axios.patch("http://localhost:8080/updateTaskOrder",
+          {
+            name: this.selectedTaskList,
+            tasks: this.tasks.map(task => task._id)
+          },
+          {
+            headers: {
+              "Authorization": `Bearer ${accessToken}`,
+              "Content-type": "application/json; charset=UTF-8"
+            }
+          });
+      } catch (e) {
+        console.log(e)
+      }
+    },
     async deleteTask(task) {
       try {
         const accessToken = await this.$auth0.getAccessTokenSilently();
@@ -127,6 +166,7 @@ export default {
               "Content-type": "application/json; charset=UTF-8"
             }
           });
+        task.selected = false
         task.edit = false
         task.origDueDate = task.dueDate
       } catch (e) {
@@ -150,15 +190,16 @@ export default {
         <div
           class="ui segment attached secondary"
           v-for="(task,index) in tasks"
-          @dragstart="event => handleDragStart(index, event)"
           @dragover.prevent
-          @dragend="task.isDragTarget = false"
-          @drop.prevent="event => handleDropOver(index, event)"
-          @dragenter="event => handleDragEnter(index, event)"
-          @click="task.selected = !task.selected"
-          @touchstart="task.selected = !task.selected"
+          @dragstart="handleDragStart(index)"
+          @drop="handleDropOver(index)"
+          @dragenter="handleDragEnter(index)"
+          @dragend="handleDragEnd"
+          @dragexit="task.isDragTarget = false"
+          @click="task.selected = true"
           @mouseleave="task.selected = false"
-          :style="[task.isDragTarget ? 'border-width: 10px !important' : 'border-width: 1px']"
+          @touchstart="task.selected = !task.selected"
+          :style="[task.isDragTarget ? 'border-top: solid' : 'border-top: none !important', 'z-index = -1', index === this.draggedIndex ? 'opacity: 0.5' : 'opacity: 1']"
           :hidden="task.completed !== showCompleted"
           :key="index"
           :class="task.selected && 'taskelement-active'"
@@ -166,55 +207,62 @@ export default {
         >
           <div
             :class="task.completed ? 'completed' : 'notCompleted'"
-            class="ui segment vertically attached"
-          >
-            Created on: {{ formatedDate(task.createdAt) }}
-            <i
-              style="min-width: 25px;min-height: 25px;padding:5px;margin:0px"
-              @click.prevent
-              @mouseenter="task.draggable = true"
-              @mouseleave="task.draggable = false"
-              class="window restore icon right floated"
-            ></i>
-          </div>
+            class="ui segment vertically attached fitted taskheader"
+            @click.prevent
+            :style="task.draggable && 'cursor: grab'"
+            @mouseenter="task.draggable = true"
+            @mouseleave="task.draggable = false"
+          >Created on: {{ formatedDate(task.createdAt) }}</div>
           <div
             :data-test-id="'taskBody-' + index"
             :class="task.selected && 'taskelement-active'"
             class="ui clearing attached segment taskelement"
           >
             <FadeTransition>
-              <span v-if="task.selected && !task.edit && !task.delete">
-                <button
+              <div
+                class="ui right floated borderless menu"
+                style="border: 0px !important"
+                v-if="task.selected && !task.edit && !task.delete"
+              >
+                <a
                   tabindex="0"
                   data-test-id="markAsCompletedButton"
-                  class="ui icon button right floated"
-                  :data-tooltip="task.completed ? 'Mark task as not completed' : 'Mark task as completed'"
+                  class="ui icon item"
                   @click.stop="markTaskAsCompleted(task)"
                 >
                   <i :class="task.completed ? 'redo icon' : 'calendar check icon'"></i>
-                </button>
-                <button
+                </a>
+                <a
                   tabindex="0"
                   data-test-id="deleteTaskButton"
-                  class="ui icon button right floated"
-                  data-tooltip="Delete task"
+                  class="ui icon item"
                   @click.stop="taskDeleteHandler(task)"
                 >
                   <i class="calendar minus icon"></i>
-                </button>
+                </a>
 
-                <button
-                  tabindex="0"
+                <a
                   data-test-id="editTaskButton"
-                  class="ui icon button right floated"
-                  data-tooltip="Edit task"
+                  class="ui icon item"
                   @click.stop="task.edit = !task.edit"
                 >
                   <i class="edit icon"></i>
-                </button>
-              </span>
+                </a>
+                <a
+                  tabindex="0"
+                  data-test-id="pushTopButton"
+                  class="ui icon item"
+                  @click.stop="pushTaskTop(index)"
+                >
+                  <i class="hand point up outline icon"></i>
+                </a>
+              </div>
             </FadeTransition>
-            <span v-if="!task.edit && !task.delete" style="white-space: pre-line;">{{ task.body }}</span>
+            <span
+              class
+              v-if="!task.edit && !task.delete"
+              style="white-space: pre-line;"
+            >{{ task.body }}</span>
             <FadeTransition>
               <span v-if="task.delete" style="white-space: pre-line;">
                 <Warning
@@ -225,43 +273,43 @@ export default {
               </span>
             </FadeTransition>
 
-            <span v-if="task.edit">
+            <div class="ui container" v-if="task.edit">
               <div class="ui form">
                 <div class="field">
                   <label></label>
-                  <textarea data-test-id="editInputBox" rows="6" v-model="task.body">
+                  <textarea @scroll.stop data-test-id="editInputBox" rows="6" v-model="task.body">
           {{ task.body }}
           </textarea>
                 </div>
                 <Calendar
+                  :active="task.selected"
                   :injectedDueDate="task.dueDate"
                   @dueDateSet="(date) => {
                     setDueDateHandler(date, task)
                   }"
                 ></Calendar>
-                <button
-                  data-tooltip="Cancel editing"
-                  data-test-id="cancelEditButton"
-                  class="ui button icon right floated"
-                  @click="() => {
-                    task.edit = false
-                    task.origDueDate &&
-                      (task.dueDate = task.origDueDate)
-                  }"
-                >
-                  <i class="redo icon"></i>
-                </button>
-
-                <button
-                  data-tooltip="Update task"
-                  data-test-id="confirmEditButton"
-                  class="ui button icon right floated"
-                  @click="updateTask(task)"
-                >
-                  <i class="check icon"></i>
-                </button>
+                <div class="ui right floated borderless menu" style="border: 0px !important">
+                  <a
+                    tabindex="0"
+                    data-test-id="cancelEditButton"
+                    class="ui icon item"
+                    @click.stop="cancelEditTask(task)"
+                    @keydown.enter="cancelEditTask(task)"
+                  >
+                    <i class="redo icon"></i>
+                  </a>
+                  <a
+                    tabindex="0"
+                    data-test-id="confirmEditButton"
+                    class="ui icon item"
+                    @click.stop="updateTask(task)"
+                    @keydown.enter="updateTask(task)"
+                  >
+                    <i class="check icon"></i>
+                  </a>
+                </div>
               </div>
-            </span>
+            </div>
           </div>
         </div>
       </TransitionGroup>
@@ -271,10 +319,10 @@ export default {
 
 <style scoped>
 .completed {
-  background-color: rgb(127, 236, 255);
+  background-color: rgb(174, 243, 255);
 }
 .notCompleted {
-  background-color: rgb(252, 73, 112);
+  background-color: rgb(255, 129, 156);
 }
 .icon[class*="right floated"] {
   float: right !important;
@@ -286,22 +334,28 @@ export default {
   margin-left: 0em !important;
   margin-right: 1em !important;
 }
+.taskheader {
+  border-radius: 0px 0px 0px 0px !important;
+}
 .taskelement {
-  min-height: 65px !important;
-  opacity: 0.8;
+  min-height: 70px !important;
+  border-radius: 0px 0px 10px 10px !important;
+  opacity: 1;
 }
 
 .taskelement-active {
   opacity: 1;
 }
-
-.list-enter-active,
-.list-leave-active {
-  transition: all 0.2s ease;
+.list-move, /* apply transition to moving elements */
+.list-enter-active {
+  transition: all 0.6s ease;
 }
-.list-enter-from,
-.list-leave-to {
+.list-leave-active {
+  transition: all cubic-bezier(0.55, 0.055, 0.675, 0.19) ease;
+}
+
+.list-enter-from {
   opacity: 0;
-  transform: translateX(100px);
+  transform: translateY(60px);
 }
 </style>

@@ -15,6 +15,7 @@ export default {
       showCompleted: false,
       showTaskForm: false,
       dueDate: "",
+      activeCalendar: true
     }
   },
   props: {
@@ -89,7 +90,7 @@ export default {
           <label></label>
           <textarea rows="8" v-model="newTask" placeholder="Add a task ..."></textarea>
         </div>
-        <Calendar :injectedDueDate="dueDate" @dueDateSet="setDueDateHandler"></Calendar>
+        <Calendar :active="true" :injectedDueDate="dueDate" @dueDateSet="setDueDateHandler"></Calendar>
         <button
           v-if="newTask"
           data-tooltip="Add a new task"

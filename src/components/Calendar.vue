@@ -1,22 +1,30 @@
 <template>
   <FadeTransition>
-    <div class="ui disabled action left icon input" @click.stop="showCalendar = !showCalendar">
+    <div class="ui disabled action left icon input" @click="showCalendar = !showCalendar">
       <i class="calendar icon"></i>
       <input
-        tabindex="-1"
         :value="formatedDueDate"
         @keydown.delete="unSetDueDate"
         @keydown.esc="showCalendar = false"
+        @mouseleave="showCalendar = false"
         type="text"
         placeholder="Due date..."
       />
-      <button v-if="formatedDueDate" @click.stop="unSetDueDate" class="ui icon button">
+      <button
+        v-if="dueDate && active || showCalendar"
+        @click.stop="unSetDueDate"
+        class="ui icon button"
+      >
         <i class="delete icon"></i>
       </button>
     </div>
   </FadeTransition>
   <FadeTransition>
-    <div v-if="showCalendar" class="ui segment center aligned calendaritem">
+    <div
+      v-if="active && showCalendar"
+      @mouseleave="showCalendar = false"
+      class="ui raised segment center aligned calendaritem"
+    >
       <i class="icon angle left floated" @click="decMonth"></i>
       <span>{{ getCleanDate(selectedMonth) }}</span>
       <i class="icon angle right right floated" @click="incMonth"></i>
@@ -56,11 +64,12 @@ export default {
     return {
       calendar: new Calendar(),
       showCalendar: false,
-      dueDate: Date
+      dueDate: ""
     }
   },
   props: {
-    injectedDueDate: String
+    injectedDueDate: String,
+    active: Boolean
   },
   methods: {
     setDueDate(selectedDate) {
@@ -70,6 +79,7 @@ export default {
     },
     unSetDueDate() {
       this.dueDate = ""
+      this.showCalendar = false
       this.$emit('dueDateSet', '')
     },
     getCleanDate(date) {
@@ -120,7 +130,7 @@ export default {
 .calendaritem {
   position: absolute !important;
   max-width: 300px;
-  z-index: 2;
+  z-index: 100 !important;
 }
 
 .icon[class*="right floated"] {
