@@ -11,6 +11,9 @@ export default {
     Authentication,
     Warning
   },
+  props: {
+    refreshTaskBar: Boolean
+  },
   data() {
     return {
       taskListArray: [],
@@ -22,18 +25,37 @@ export default {
       newTaskListName: "",
       creatingNewTaskList: false,
       taskListToRename: "",
-      draggedIndex: ""
+      draggedIndex: "",
+      touchTimerStart: 0,
+      taskListSize: 0,
+      isOverFlown: Boolean,
+      scrollInterval: Object
     }
   },
   watch: {
     isAuthenticated: {
-      handler() {
-        if (this.isAuthenticated) this.getTaskList()
+      async handler() {
+        if (this.isAuthenticated) {
+          await this.getTaskList()
+          this.isOverFlown = this.isOverFlownMenu()
+        }
       },
       immediate: true
-    }
+    },
+    refreshTaskBar() {
+      this.getTaskList()
+    },
+  },
+  created() {
+    window.addEventListener("resize", this.handleResize);
+  },
+  destroyed() {
+    window.removeEventListener("resize", this.handleResize);
   },
   methods: {
+    isOverFlownMenu() {
+      return this.$refs.taskListMenu.scrollWidth > this.$refs.taskListMenu.clientWidth
+    },
     setSelectedTaskList(taskList) {
       this.selectedTaskList = taskList
       this.creatingNewTaskList = false
@@ -88,10 +110,28 @@ export default {
       this.unSetDragTarget()
       this.draggedIndex = ""
     },
+    handleTouchStart(index, taskListName) {
+      if (this.draggedIndex !== "") {
+        this.handleDropOver(index)
+        this.handleDragEnd()
+      } else {
+        this.setSelectedTaskList(taskListName)
+      }
+      let now = new Date()
+      this.touchTimerStart = now.valueOf()
+    },
+    handleTouchEnd(index) {
+      let minduration = 500
+      let now = new Date()
+      let delta = now.valueOf() - this.touchTimerStart
+      console.log(delta)
+      if (delta >= minduration) this.handleDragStart(index)
+      this.touchTimerStart = 0
+    },
     async updateTaskListOrder() {
       try {
         const accessToken = await this.$auth0.getAccessTokenSilently();
-        await axios.patch("http://localhost:8080/updateTaskListOrder",
+        await axios.patch("https://localhost:8443/updateTaskListOrder",
           {
             taskLists: this.taskListArray.map(taskList => taskList._id)
           },
@@ -109,7 +149,7 @@ export default {
 
       try {
         const accessToken = await this.$auth0.getAccessTokenSilently();
-        const response = await axios.put("http://localhost:8080/createTaskList",
+        const response = await axios.put("https://localhost:8443/createTaskList",
           {
             name: this.newTaskListName
           },
@@ -119,8 +159,8 @@ export default {
               "Content-type": "application/json; charset=UTF-8"
             },
           })
-        await response.data;
-        this.taskListArray.push({ name: this.newTaskListName })
+        const data = await response.data;
+        this.taskListArray.push(data)
         this.setSelectedTaskList(this.newTaskListName)
       } catch (e) {
         console.log(e)
@@ -132,7 +172,7 @@ export default {
     async updateTaskList() {
       try {
         const accessToken = await this.$auth0.getAccessTokenSilently();
-        const response = await axios.patch("http://localhost:8080/updateTaskList",
+        const response = await axios.patch("https://localhost:8443/updateTaskList",
           {
             name: this.selectedTaskList,
             newName: this.newTaskListName
@@ -161,7 +201,7 @@ export default {
     async deleteTaskList(taskList) {
       try {
         const accessToken = await this.$auth0.getAccessTokenSilently();
-        await axios.delete("http://localhost:8080/deleteTaskList", {
+        await axios.delete("https://localhost:8443/deleteTaskList", {
           data: {
             name: taskList
           },
@@ -173,7 +213,7 @@ export default {
         this.taskListToDelete = ""
         this.taskListArray = this.taskListArray.filter(t => t.name != taskList
         )
-        this.setSelectedTaskList(this.taskListArray[0])
+        this.setSelectedTaskList(this.taskListArray[0].name)
       } catch (e) {
         console.log(e)
       }
@@ -181,33 +221,61 @@ export default {
     async getTaskList() {
       try {
         const accessToken = await this.$auth0.getAccessTokenSilently();
-        const response = await axios.get("http://localhost:8080/getTaskList", {
+        const response = await axios.get("https://localhost:8443/getTaskList", {
           headers: {
             "Authorization": `Bearer ${accessToken}`,
             "Content-type": "application/json; charset=UTF-8"
           }
         });
         this.taskListArray = await response.data
-        //        this.taskListArray = data.map(item => item.name)
-        this.setSelectedTaskList(this.taskListArray[0].name)
+        this.selectedTaskList || this.setSelectedTaskList(this.taskListArray[0].name)
+        console.log(this.$auth0)
+        const t = await this.$auth0.checkSession()
+        console.log(t)
       } catch (e) {
         console.log(e)
       }
-    }
-  },
+    },
+    handleMouseDown(callback) {
+      this.scrollInterval = setInterval(callback, 20)
+    },
+    handleMouseUp() {
+      clearInterval(this.scrollInterval)
+    },
+    handleScrollLeft() {
+      this.$refs.taskListMenu.scrollLeft -= 10
+    },
+    handleScrollRight() {
+      this.$refs.taskListMenu.scrollLeft += 10
+    },
+    handleResize() {
+      this.isOverFlown = this.isOverFlownMenu()
+    },
+  }
 }
 
 </script>
 
 <template>
-  <div tabindex="-1" class="ui taskmenu inverted menu">
+  <div tabindex="-1" class="ui left inverted menu">
     <div v-if="isAuthenticated" class="left menu">
-      <div class="item">
+      <div class="item collapsable">
         <i class="user icon"></i>
         {{ auth0User.nickname }}
       </div>
+      <div
+        v-if="isOverFlown"
+        @mousedown="handleMouseDown(handleScrollLeft)"
+        @mouseup="handleMouseUp()"
+        @touchstart.prevent.stop="handleMouseDown(handleScrollLeft)"
+        @touchend.prevent="handleMouseUp()"
+        @touchmove.prevent
+        class="link item"
+      >
+        <i class="angle left icon"></i>
+      </div>
     </div>
-    <div v-if="isAuthenticated" class="center menu">
+    <div ref="taskListMenu" v-if="isAuthenticated" class="ui inverted center menu taskmenu">
       <a
         tabindex="0"
         data-test-id="deleteTaskList"
@@ -223,7 +291,7 @@ export default {
         class="link item taskList"
         v-for="(taskList,index) in taskListArray"
         data-test-id="taskListName"
-        @click.prevent="setSelectedTaskList(taskList.name)"
+        @click="setSelectedTaskList(taskList.name)"
         @dblclick="renameTaskListHandler(taskList.name)"
         @keydown.space.prevent="setSelectedTaskList(taskList.name)"
         @keydown.enter="renameTaskListHandler(taskList.name)"
@@ -231,9 +299,11 @@ export default {
         @dragstart="handleDragStart(index)"
         @drop.prevent="handleDropOver(index)"
         @dragenter="handleDragEnter(index)"
-        @dragend="handleDragEnd"
+        @dragend="handleDragEnd(index)"
         @dragexit="taskList.isDragTarget = false"
-        :class="selectedTaskList == taskList.name && 'active'"
+        @touchstart.prevent.stop="handleTouchStart(index, taskList.name)"
+        @touchend="handleTouchEnd(index)"
+        :class="[selectedTaskList == taskList.name && 'active', draggedIndex === index ? 'horizontal-shake' : '']"
         :style="[taskList.isDragTarget ? 'border-left: 2px solid' : 'border-left: 1px']"
         tabindex="0"
         draggable="true"
@@ -250,7 +320,6 @@ export default {
               @keydown.delete.stop
               @keydown.space.stop
               @keydown.enter.stop="newTaskListName ? updateTaskList() : taskListToRename = ''"
-              @click.stop
             />
             <div
               v-if="newTaskListName"
@@ -269,9 +338,9 @@ export default {
               <i class="delete icon"></i>
             </div>
           </div>
-          <span v-else draggable>
-            <i class="tasks icon"></i>
-            {{ taskList.name }} ({{ taskList.tasks.length }})
+          <span v-else>
+            <i class="tasks icon collapsable"></i>
+            {{ taskList.name }} ({{ taskList.tasks.filter(t => !t.completed).length }})
           </span>
         </FadeTransition>
       </div>
@@ -312,7 +381,18 @@ export default {
         <i v-if="!creatingNewTaskList" class="plus icon"></i>
       </a>
     </div>
-    <div class="right menu">
+    <div class="ui inverted right menu">
+      <div
+        v-if="isAuthenticated && isOverFlown"
+        @mousedown="handleMouseDown(handleScrollRight)"
+        @mouseup="handleMouseUp()"
+        @touchstart.prevent.stop="handleMouseDown(handleScrollRight)"
+        @touchend.prevent="handleMouseUp()"
+        @touchmove.prevent
+        class="link item"
+      >
+        <i class="angle right icon"></i>
+      </div>
       <Authentication></Authentication>
     </div>
   </div>
@@ -329,7 +409,35 @@ export default {
 <style scoped>
 .taskmenu {
   min-height: 50px;
-  overflow-x: auto !important;
+  overflow-x: hidden !important;
   overflow-y: hidden !important;
+}
+
+.horizontal-shake {
+  animation: horizontal-shaking 0.5s infinite;
+}
+</style>
+<style>
+@media screen and (max-width: 600px) {
+  .collapsable {
+    display: none !important;
+  }
+}
+@keyframes horizontal-shaking {
+  0% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(2px);
+  }
+  50% {
+    transform: translateX(-2px);
+  }
+  75% {
+    transform: translateX(2px);
+  }
+  100% {
+    transform: translateX(0);
+  }
 }
 </style>

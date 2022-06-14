@@ -1,30 +1,50 @@
 <template>
-  <FadeTransition>
-    <div class="ui disabled action left icon input" @click="showCalendar = !showCalendar">
-      <i class="calendar icon"></i>
-      <input
-        :value="formatedDueDate"
-        @keydown.delete="unSetDueDate"
-        @keydown.esc="showCalendar = false"
-        @mouseleave="showCalendar = false"
-        type="text"
-        placeholder="Due date..."
-      />
-      <button
-        v-if="dueDate && active || showCalendar"
-        @click.stop="unSetDueDate"
-        class="ui icon button"
+  <form class="ui form">
+    <div class="field">
+      <div
+        @touchstart.prevent.stop
+        @touchend.stop="showCalendar = !showCalendar"
+        @click.prevent="showCalendar = !showCalendar"
+        style
+        @keydown.prevent
+        class="ui left icon input"
+        :class="(showCalendar || dueDate) && 'action'"
       >
-        <i class="delete icon"></i>
-      </button>
+        <i class="calendar icon"></i>
+        <input
+          style="max-width: 300px"
+          @mousedown.prevent
+          :value="formatedDueDate"
+          type="text"
+          placeholder="Due date..."
+        />
+        <button
+          v-if="dueDate && active || showCalendar"
+          @click.stop="unSetDueDate"
+          @touchstart.prevent.stop
+          @touchend.stop="unSetDueDate"
+          class="ui icon button"
+        >
+          <i class="delete icon"></i>
+        </button>
+      </div>
     </div>
-  </FadeTransition>
+    <div :class="isTimeValid ? 'success' : 'error'" class="field">
+      <div @touchstart.stop class="ui input left icon">
+        <i class="clock icon"></i>
+        <input
+          @input="(event) => validateTime(event)"
+          @blur="!isTimeValid && (time = '00:00') && validateTime()"
+          v-model="time"
+          style="max-width: 300px"
+          type="text"
+          placeholder="00:00"
+        />
+      </div>
+    </div>
+  </form>
   <FadeTransition>
-    <div
-      v-if="active && showCalendar"
-      @mouseleave="showCalendar = false"
-      class="ui raised segment center aligned calendaritem"
-    >
+    <div v-if="active && showCalendar" class="ui raised segment center aligned calendaritem">
       <i class="icon angle left floated" @click="decMonth"></i>
       <span>{{ getCleanDate(selectedMonth) }}</span>
       <i class="icon angle right right floated" @click="incMonth"></i>
@@ -40,7 +60,10 @@
               v-for="date in line"
               :data-test-id="date.getDay()"
               :class="[isSelectable(date) ? 'selectable' : 'disabled', isTodayOrDueDate(date) && 'highlighted']"
-              v-on="isSelectable(date) ? { click: () => setDueDate(date) } : {}"
+              @click.stop
+              @touchstart.prevent.stop
+              @touchend.stop
+              v-on="isSelectable(date) ? { click: () => setDueDate(date), touchend: () => setDueDate(date) } : {}"
               class="center aligned"
             >{{ date.getDate() }}</td>
           </tr>
@@ -64,23 +87,46 @@ export default {
     return {
       calendar: new Calendar(),
       showCalendar: false,
-      dueDate: ""
+      dueDate: "",
+      time: "00:00",
+      isTimeValid: true
     }
+  },
+  watch: {
+    active() {
+      if (!this.active) this.showCalendar = false
+    },
   },
   props: {
     injectedDueDate: String,
     active: Boolean
   },
   methods: {
+    validateTime(event) {
+      const timeRegEx = /^([0-9]|[0-1][0-9]|2[0-3]):[0-5][0-9]$/g
+      if (timeRegEx.test(this.time)) {
+        this.isTimeValid = true
+        if (this.dueDate instanceof Date) {
+          this.setDueDate(this.dueDate)
+        }
+      } else {
+        this.isTimeValid = false
+      }
+    },
     setDueDate(selectedDate) {
       this.dueDate = selectedDate
+      let hours = this.time.split(':')[0]
+      let minutes = this.time.split(':')[1]
+      this.dueDate.setHours(hours)
+      this.dueDate.setMinutes(minutes)
       this.$emit('dueDateSet', this.dueDate.toString())
       this.showCalendar = false
+      console.log(this.dueDate)
     },
     unSetDueDate() {
       this.dueDate = ""
       this.showCalendar = false
-      this.$emit('dueDateSet', '')
+      this.$emit('dueDateSet', "")
     },
     getCleanDate(date) {
       return moment(date).format("MMMM YY")

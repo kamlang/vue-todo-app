@@ -7,7 +7,7 @@ import FadeTransition from "./FadeTransition.vue"
 import Calendar from "./Calendar.vue"
 
 export default {
-  emits: ['error'],
+  emits: ['refreshTaskBar', 'error'],
   components: {
     TaskCreater,
     Calendar,
@@ -18,7 +18,8 @@ export default {
     return {
       tasks: [],
       showCompleted: false,
-      draggedIndex: ""
+      draggedIndex: "",
+      touchTimerStart: 0
     }
   },
   props: {
@@ -30,7 +31,7 @@ export default {
       if (this.selectedTaskList) {
         try {
           const accessToken = await this.$auth0.getAccessTokenSilently();
-          const response = await axios.post("http://localhost:8080/getTasks",
+          const response = await axios.post("https://localhost:8443/getTasks",
             {
               name: this.selectedTaskList
             },
@@ -52,14 +53,16 @@ export default {
     cancelEditTask(task) {
       task.selected = false
       task.edit = false
-      task.origDueDate && (task.dueDate = task.origDueDate)
+      task.dueDate = task.origDueDate
     },
 
     formatedDate(date) {
       return moment(date).format("LLLL")
     },
     setDueDateHandler(date, task) {
-      task.origDueDate = task.dueDate
+      if (task.origDueDate === undefined) {
+        task.origDueDate = task.dueDate
+      }
       task.dueDate = date
     },
     setErrorMessage(errorMessage) {
@@ -73,18 +76,99 @@ export default {
       task.selected = false
       task.delete = true
     },
-    handleDragEnter(index) {
-      this.tasks[index].isDragTarget = true
-    },
-    handleDragStart(index) {
-      this.draggedIndex = index
-    },
+
     pushTaskTop(index) {
       let taskToPush = this.tasks[index]
       taskToPush.selected = false
       this.tasks.splice(index, 1)
       this.tasks.unshift(taskToPush)
       this.updateTaskOrder()
+    },
+
+    newTaskCreatedHandler(data) {
+      this.$emit('refreshTaskBar')
+      this.tasks.unshift(data)
+    },
+    async updateTaskOrder() {
+      try {
+        const accessToken = await this.$auth0.getAccessTokenSilently();
+        await axios.patch("https://localhost:8443/updateTaskOrder",
+          {
+            name: this.selectedTaskList,
+            tasks: this.tasks.map(task => task._id)
+          },
+          {
+            headers: {
+              "Authorization": `Bearer ${accessToken}`,
+              "Content-type": "application/json; charset=UTF-8"
+            }
+          });
+      } catch (e) {
+        console.log(e)
+      }
+    },
+    async deleteTask(task) {
+      try {
+        const accessToken = await this.$auth0.getAccessTokenSilently();
+        await axios.delete("https://localhost:8443/deleteTask", {
+          data: {
+            _id: task._id
+          },
+          headers: {
+            "Authorization": `Bearer ${accessToken}`,
+            "Content-type": "application/json; charset=UTF-8"
+          },
+        })
+        this.tasks = this.tasks.filter(t => t != task)
+        this.$emit('refreshTaskBar')
+      } catch (e) {
+        console.log(e)
+      }
+    },
+    async updateTask(task) {
+      try {
+        const accessToken = await this.$auth0.getAccessTokenSilently();
+        await axios.patch("https://localhost:8443/updateTask",
+          {
+            _id: task._id,
+            body: task.body,
+            dueDate: task.dueDate,
+            completed: task.completed
+          },
+          {
+            headers: {
+              "Authorization": `Bearer ${accessToken}`,
+              "Content-type": "application/json; charset=UTF-8"
+            }
+          });
+        task.selected = false
+        task.edit = false
+        task.origDueDate = task.dueDate
+        this.$emit('refreshTaskBar')
+      } catch (e) {
+        console.log(e)
+      }
+    },
+    handleDragEnter(index) {
+      this.tasks[index].isDragTarget = true
+    },
+    handleDragStart(index) {
+      this.draggedIndex = index
+    },
+    unSetAllButSelected(index) {
+      this.tasks = this.tasks.map((t, i) => {
+        if (i !== index) t.selected = false
+        return t
+      })
+    },
+    handleTouchStart(index) {
+      this.unSetAllButSelected(index)
+      if (this.draggedIndex !== '') {
+        this.handleDragEnter(index)
+      }
+      let now = new Date()
+      this.touchTimerStart = now.valueOf()
+
     },
     unSetDragTarget() {
       this.tasks = this.tasks.map(t => {
@@ -105,74 +189,25 @@ export default {
         let arr2 = this.tasks.slice(index,).filter(task => task !== taskToInsert)
         this.tasks = arr1.concat(arr2)
         this.updateTaskOrder()
-        this.unSetDragTarget()
       }
     },
     handleDragEnd() {
       this.unSetDragTarget()
       this.draggedIndex = ""
     },
-    newTaskCreatedHandler(data) {
-      this.tasks.unshift(data)
-    },
-    async updateTaskOrder() {
-      try {
-        const accessToken = await this.$auth0.getAccessTokenSilently();
-        await axios.patch("http://localhost:8080/updateTaskOrder",
-          {
-            name: this.selectedTaskList,
-            tasks: this.tasks.map(task => task._id)
-          },
-          {
-            headers: {
-              "Authorization": `Bearer ${accessToken}`,
-              "Content-type": "application/json; charset=UTF-8"
-            }
-          });
-      } catch (e) {
-        console.log(e)
+    handleTouchEnd(index) {
+      let minduration = 500
+      let now = new Date()
+      let delta = now.valueOf() - this.touchTimerStart
+      if (delta >= minduration) this.handleDragStart(index)
+      else if (this.tasks[index].isDragTarget !== true) {
+        this.tasks[index].selected = !this.tasks[index].selected
+      } else if (this.tasks[index].isDragTarget === true) {
+        this.handleDropOver(index)
+        this.handleDragEnd()
       }
+      this.touchTimerStart = 0
     },
-    async deleteTask(task) {
-      try {
-        const accessToken = await this.$auth0.getAccessTokenSilently();
-        await axios.delete("http://localhost:8080/deleteTask", {
-          data: {
-            _id: task._id
-          },
-          headers: {
-            "Authorization": `Bearer ${accessToken}`,
-            "Content-type": "application/json; charset=UTF-8"
-          },
-        })
-        this.tasks = this.tasks.filter(t => t != task)
-      } catch (e) {
-        console.log(e)
-      }
-    },
-    async updateTask(task) {
-      try {
-        const accessToken = await this.$auth0.getAccessTokenSilently();
-        await axios.patch("http://localhost:8080/updateTask",
-          {
-            _id: task._id,
-            body: task.body,
-            dueDate: task.dueDate,
-            completed: task.completed
-          },
-          {
-            headers: {
-              "Authorization": `Bearer ${accessToken}`,
-              "Content-type": "application/json; charset=UTF-8"
-            }
-          });
-        task.selected = false
-        task.edit = false
-        task.origDueDate = task.dueDate
-      } catch (e) {
-        console.log(e)
-      }
-    }
   },
 }
 </script>
@@ -196,13 +231,15 @@ export default {
           @dragenter="handleDragEnter(index)"
           @dragend="handleDragEnd"
           @dragexit="task.isDragTarget = false"
-          @click="task.selected = true"
           @mouseleave="task.selected = false"
-          @touchstart="task.selected = !task.selected"
-          :style="[task.isDragTarget ? 'border-top: solid' : 'border-top: none !important', 'z-index = -1', index === this.draggedIndex ? 'opacity: 0.5' : 'opacity: 1']"
+          @click="task.selected = true"
+          @touchstart.prevent="handleTouchStart(index)"
+          @touchend.prevent="handleTouchEnd(index)"
+          @touchmove.prevent
+          :style="[task.isDragTarget ? 'border-top: solid' : 'border-top: none !important', 'z-index = -1']"
           :hidden="task.completed !== showCompleted"
           :key="index"
-          :class="task.selected && 'taskelement-active'"
+          :class="[task.selected && 'taskelement-active', index === this.draggedIndex ? 'horizontal-shake' : '']"
           :draggable="task.draggable"
         >
           <div
@@ -223,12 +260,17 @@ export default {
                 class="ui right floated borderless menu"
                 style="border: 0px !important"
                 v-if="task.selected && !task.edit && !task.delete"
+                z-index="100"
               >
                 <a
                   tabindex="0"
                   data-test-id="markAsCompletedButton"
                   class="ui icon item"
-                  @click.stop="markTaskAsCompleted(task)"
+                  @mouseup.stop="markTaskAsCompleted(task)"
+                  @click.prevent.stop
+                  @touchstart.prevent.stop
+                  @touchmove.prevent
+                  @touchend.stop="markTaskAsCompleted(task)"
                 >
                   <i :class="task.completed ? 'redo icon' : 'calendar check icon'"></i>
                 </a>
@@ -236,7 +278,11 @@ export default {
                   tabindex="0"
                   data-test-id="deleteTaskButton"
                   class="ui icon item"
-                  @click.stop="taskDeleteHandler(task)"
+                  @mouseup.stop="taskDeleteHandler(task)"
+                  @click.prevent.stop
+                  @touchstart.prevent.stop
+                  @touchmove.prevent
+                  @touchend.stop="taskDeleteHandler(task)"
                 >
                   <i class="calendar minus icon"></i>
                 </a>
@@ -244,7 +290,11 @@ export default {
                 <a
                   data-test-id="editTaskButton"
                   class="ui icon item"
-                  @click.stop="task.edit = !task.edit"
+                  @mouseup.stop="task.edit = !task.edit"
+                  @click.prevent.stop
+                  @touchstart.prevent.stop
+                  @touchmove.prevent
+                  @touchend.stop="task.edit = !task.edit"
                 >
                   <i class="edit icon"></i>
                 </a>
@@ -252,7 +302,11 @@ export default {
                   tabindex="0"
                   data-test-id="pushTopButton"
                   class="ui icon item"
-                  @click.stop="pushTaskTop(index)"
+                  @mouseup.stop="pushTaskTop(index)"
+                  @click.prevent.stop
+                  @touchstart.prevent.stop
+                  @touchmove.prevent
+                  @touchend.stop="pushTaskTop(index)"
                 >
                   <i class="hand point up outline icon"></i>
                 </a>
@@ -277,7 +331,12 @@ export default {
               <div class="ui form">
                 <div class="field">
                   <label></label>
-                  <textarea @scroll.stop data-test-id="editInputBox" rows="6" v-model="task.body">
+                  <textarea
+                    @touchstart.self="(event) => event.target.focus()"
+                    data-test-id="editInputBox"
+                    rows="6"
+                    v-model="task.body"
+                  >
           {{ task.body }}
           </textarea>
                 </div>
@@ -294,6 +353,8 @@ export default {
                     data-test-id="cancelEditButton"
                     class="ui icon item"
                     @click.stop="cancelEditTask(task)"
+                    @touchstart.prevent.stop
+                    @touchend.stop="cancelEditTask(task)"
                     @keydown.enter="cancelEditTask(task)"
                   >
                     <i class="redo icon"></i>
@@ -303,6 +364,8 @@ export default {
                     data-test-id="confirmEditButton"
                     class="ui icon item"
                     @click.stop="updateTask(task)"
+                    @touchstart.prevent.stop
+                    @touchend.stop="updateTask(task)"
                     @keydown.enter="updateTask(task)"
                   >
                     <i class="check icon"></i>
@@ -357,5 +420,25 @@ export default {
 .list-enter-from {
   opacity: 0;
   transform: translateY(60px);
+}
+.horizontal-shake {
+  animation: horizontal-shaking 0.5s infinite;
+}
+@keyframes horizontal-shaking {
+  0% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(2px);
+  }
+  50% {
+    transform: translateX(-2px);
+  }
+  75% {
+    transform: translateX(2px);
+  }
+  100% {
+    transform: translateX(0);
+  }
 }
 </style>

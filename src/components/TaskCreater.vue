@@ -30,6 +30,7 @@ export default {
   },
   methods: {
     toggleShowCompleted() {
+      this.showCompleted = !this.showCompleted
       this.$emit('toggleShowCompleted', this.showCompleted)
     },
     setDueDateHandler(date) {
@@ -38,7 +39,7 @@ export default {
     async addTask() {
       try {
         const accessToken = await this.$auth0.getAccessTokenSilently();
-        const response = await axios.put("http://localhost:8080/addTask",
+        const response = await axios.put("https://localhost:8443/addTask",
           {
             body: this.newTask,
             dueDate: this.dueDate,
@@ -73,14 +74,14 @@ export default {
     <div
       :data-tooltip="showCompleted ? 'Hide completed tasks' : 'Show completed tasks'"
       @keydown.space.stop="showCompleted = !showCompleted"
-      class="ui toggle checkbox right floated"
+      class="ui button right floated"
       @click.stop="toggleShowCompleted"
-    >
-      <input type="checkbox" name="public" />
-      <label></label>
-    </div>
+    >{{ !showCompleted ? 'Show completed tasks' : 'Hide completed tasks' }}</div>
     <i v-if="showTaskForm" class="angle up icon"></i>
-    <i v-else class="angle down icon"></i>
+    <div class="ui button" v-else>
+      <i class="angle down icon"></i>
+      Create new task
+    </div>
   </div>
 
   <FadeTransition>
@@ -98,6 +99,7 @@ export default {
           @click="addTask"
         >
           <i class="calendar plus icon"></i>
+          Add task
         </button>
       </div>
     </div>
