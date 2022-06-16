@@ -133,6 +133,7 @@ export default {
         await axios.patch("https://192.168.1.6:8443/updateTask",
           {
             _id: task._id,
+            title: task.title,
             body: task.body,
             dueDate: task.dueDate,
             completed: task.completed
@@ -260,10 +261,14 @@ export default {
             class="ui segment vertically attached fitted taskheader"
             @click.prevent
             :style="task.draggable && 'cursor: grab'"
+            style="display: flex; justify-content: space-between;"
             @touchstart.prevent.stop="handleTouchStart(index)"
             @mouseenter="task.draggable = true"
             @mouseleave="task.draggable = false"
-          >Created on: {{ formatedDate(task.createdAt) }}</div>
+          >
+            <span style>{{ task.title && 'Title: ' }}{{ task.title }}</span>
+            <span style>Created on: {{ formatedDate(task.createdAt) }}</span>
+          </div>
           <div
             :data-test-id="'taskBody-' + index"
             :class="task.selected && 'taskelement-active'"
@@ -343,6 +348,14 @@ export default {
 
             <div class="ui container" v-if="task.edit">
               <div class="ui form">
+                <div class="field">
+                  <input
+                    v-model="task.title"
+                    @touchstart.self="(event) => event.target.focus()"
+                    @blur.self="(event) => event.target.blur()"
+                    placeholder="Give a title to this task..."
+                  />
+                </div>
                 <div class="field">
                   <label></label>
                   <textarea

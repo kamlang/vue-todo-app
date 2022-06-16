@@ -12,6 +12,7 @@ export default {
   data() {
     return {
       newTask: "",
+      newTaskTitle: "",
       showCompleted: false,
       showTaskForm: false,
       dueDate: "",
@@ -26,6 +27,7 @@ export default {
       this.showTaskForm = false
       this.dueDate = ""
       this.newTask = ""
+      this.newTaskTitle = ""
     },
   },
   methods: {
@@ -40,6 +42,7 @@ export default {
         const accessToken = await this.$auth0.getAccessTokenSilently();
         const response = await axios.put("https://192.168.1.6:8443/addTask",
           {
+            title: this.newTaskTitle,
             body: this.newTask,
             dueDate: this.dueDate,
             name: this.selectedTaskList
@@ -55,6 +58,7 @@ export default {
         this.$emit('error', '')
         this.newTask = ""
         this.dueDate = ""
+        this.newTaskTitle = ""
       } catch (e) {
         console.log(e)
       }
@@ -87,8 +91,11 @@ export default {
     <div v-if="showTaskForm" class="ui clearing segment">
       <form class="ui form">
         <div class="field">
+          <input v-model="newTaskTitle" placeholder="Give a title to this task..." />
+        </div>
+        <div class="field">
           <label></label>
-          <textarea rows="8" v-model="newTask" placeholder="Add a task ..."></textarea>
+          <textarea rows="8" v-model="newTask" placeholder="Add a task..."></textarea>
         </div>
         <Calendar :active="true" :injectedDueDate="dueDate" @dueDateSet="setDueDateHandler"></Calendar>
         <div v-if="newTask" class="field">

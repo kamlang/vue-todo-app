@@ -18,6 +18,7 @@ export default {
         class="ui right floated button"
         @keydown.enter="$emit('no')"
         @click="$emit('no')"
+        @touchstart.prevent="$emit('no')"
       >No</div>
       <div
         data-test-id="warnYes"
@@ -25,6 +26,7 @@ export default {
         class="ui right floated button"
         @keydown.enter="$emit('yes')"
         @click="$emit('yes')"
+        @touchstart.prevent="$emit('yes')"
       >Yes</div>
     </div>
   </div>
