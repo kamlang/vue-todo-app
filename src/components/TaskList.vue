@@ -19,7 +19,9 @@ export default {
       tasks: [],
       showCompleted: false,
       draggedIndex: "",
-      touchTimerStart: 0
+      touchTimerStart: 0,
+      showMenu: true,
+      clearTimeout: Object
     }
   },
   props: {
@@ -31,7 +33,7 @@ export default {
       if (this.selectedTaskList) {
         try {
           const accessToken = await this.$auth0.getAccessTokenSilently();
-          const response = await axios.post("https://localhost:8443/getTasks",
+          const response = await axios.post("https://192.168.1.6:8443/getTasks",
             {
               name: this.selectedTaskList
             },
@@ -92,7 +94,7 @@ export default {
     async updateTaskOrder() {
       try {
         const accessToken = await this.$auth0.getAccessTokenSilently();
-        await axios.patch("https://localhost:8443/updateTaskOrder",
+        await axios.patch("https://192.168.1.6:8443/updateTaskOrder",
           {
             name: this.selectedTaskList,
             tasks: this.tasks.map(task => task._id)
@@ -110,7 +112,7 @@ export default {
     async deleteTask(task) {
       try {
         const accessToken = await this.$auth0.getAccessTokenSilently();
-        await axios.delete("https://localhost:8443/deleteTask", {
+        await axios.delete("https://192.168.1.6:8443/deleteTask", {
           data: {
             _id: task._id
           },
@@ -128,7 +130,7 @@ export default {
     async updateTask(task) {
       try {
         const accessToken = await this.$auth0.getAccessTokenSilently();
-        await axios.patch("https://localhost:8443/updateTask",
+        await axios.patch("https://192.168.1.6:8443/updateTask",
           {
             _id: task._id,
             body: task.body,
@@ -162,6 +164,10 @@ export default {
       })
     },
     handleTouchStart(index) {
+      this.showMenu = true
+      this.clearTimeout && clearTimeout(this.clearTimeout)
+      this.clearTimeout = setTimeout(() => this.showMenu = false, 4000)
+
       this.unSetAllButSelected(index)
       if (this.draggedIndex !== '') {
         this.handleDragEnter(index)
@@ -195,13 +201,18 @@ export default {
       this.unSetDragTarget()
       this.draggedIndex = ""
     },
+    handleTouchMove(index) {
+      this.showMenu = false
+      this.touchTimerStart = new Date().setFullYear(3000)
+    },
     handleTouchEnd(index) {
       let minduration = 500
       let now = new Date()
       let delta = now.valueOf() - this.touchTimerStart
       if (delta >= minduration) this.handleDragStart(index)
       else if (this.tasks[index].isDragTarget !== true) {
-        this.tasks[index].selected = !this.tasks[index].selected
+        //        this.tasks[index].selected = !this.tasks[index].selected
+        this.tasks[index].selected = true
       } else if (this.tasks[index].isDragTarget === true) {
         this.handleDropOver(index)
         this.handleDragEnd()
@@ -223,7 +234,8 @@ export default {
       ></TaskCreater>
       <TransitionGroup name="list">
         <div
-          class="ui segment attached secondary"
+          class="ui segment attached"
+          style="padding-top: 5px; padding-left: 10px; padding-right: 10px; padding-bottom: 5px; border-bottom: none !important;"
           v-for="(task,index) in tasks"
           @dragover.prevent
           @dragstart="handleDragStart(index)"
@@ -233,13 +245,14 @@ export default {
           @dragexit="task.isDragTarget = false"
           @mouseleave="task.selected = false"
           @click="task.selected = true"
-          @touchstart.prevent="handleTouchStart(index)"
+          @touchstart="handleTouchStart(index)"
           @touchend.prevent="handleTouchEnd(index)"
-          @touchmove.prevent
+          @touchmove="handleTouchMove(index)"
+          @blur="task.selected = false"
           :style="[task.isDragTarget ? 'border-top: solid' : 'border-top: none !important', 'z-index = -1']"
           :hidden="task.completed !== showCompleted"
           :key="index"
-          :class="[task.selected && 'taskelement-active', index === this.draggedIndex ? 'horizontal-shake' : '']"
+          :class="[task.selected && 'taskelement-active', index === this.draggedIndex ? 'horizontal-shake' : '', task.selected ? '' : 'secondary']"
           :draggable="task.draggable"
         >
           <div
@@ -247,6 +260,7 @@ export default {
             class="ui segment vertically attached fitted taskheader"
             @click.prevent
             :style="task.draggable && 'cursor: grab'"
+            @touchstart.prevent.stop="handleTouchStart(index)"
             @mouseenter="task.draggable = true"
             @mouseleave="task.draggable = false"
           >Created on: {{ formatedDate(task.createdAt) }}</div>
@@ -259,7 +273,7 @@ export default {
               <div
                 class="ui right floated borderless menu"
                 style="border: 0px !important"
-                v-if="task.selected && !task.edit && !task.delete"
+                v-if="task.selected && !task.edit && !task.delete && showMenu"
                 z-index="100"
               >
                 <a
@@ -333,6 +347,7 @@ export default {
                   <label></label>
                   <textarea
                     @touchstart.self="(event) => event.target.focus()"
+                    @blur.self="(event) => event.target.blur()"
                     data-test-id="editInputBox"
                     rows="6"
                     v-model="task.body"
@@ -347,29 +362,27 @@ export default {
                     setDueDateHandler(date, task)
                   }"
                 ></Calendar>
-                <div class="ui right floated borderless menu" style="border: 0px !important">
-                  <a
+
+                <div v-if="task.body" class="ui buttons">
+                  <button
                     tabindex="0"
                     data-test-id="cancelEditButton"
-                    class="ui icon item"
                     @click.stop="cancelEditTask(task)"
                     @touchstart.prevent.stop
                     @touchend.stop="cancelEditTask(task)"
                     @keydown.enter="cancelEditTask(task)"
-                  >
-                    <i class="redo icon"></i>
-                  </a>
-                  <a
+                    class="ui button"
+                  >Cancel</button>
+                  <div class="or"></div>
+                  <button
                     tabindex="0"
                     data-test-id="confirmEditButton"
-                    class="ui icon item"
+                    class="ui button"
                     @click.stop="updateTask(task)"
                     @touchstart.prevent.stop
                     @touchend.stop="updateTask(task)"
                     @keydown.enter="updateTask(task)"
-                  >
-                    <i class="check icon"></i>
-                  </a>
+                  >Save</button>
                 </div>
               </div>
             </div>

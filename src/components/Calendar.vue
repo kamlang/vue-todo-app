@@ -1,23 +1,19 @@
 <template>
-  <form class="ui form">
+  <div class="two fields">
     <div class="field">
-      <div
-        @touchstart.prevent.stop
-        @touchend.stop="showCalendar = !showCalendar"
-        @click.prevent="showCalendar = !showCalendar"
-        style
-        @keydown.prevent
-        class="ui left icon input"
-        :class="(showCalendar || dueDate) && 'action'"
-      >
+      <div class="ui left icon input" :class="(showCalendar || dueDate) && 'action'">
         <i class="calendar icon"></i>
         <input
-          style="max-width: 300px"
+          @touchend.prevent.stop="active && (showCalendar = !showCalendar)"
+          @mouseup="showCalendar = !showCalendar"
+          @keydown.prevent
           @mousedown.prevent
           :value="formatedDueDate"
           type="text"
           placeholder="Due date..."
+          tabindex="-1"
         />
+
         <button
           v-if="dueDate && active || showCalendar"
           @click.stop="unSetDueDate"
@@ -30,19 +26,19 @@
       </div>
     </div>
     <div :class="isTimeValid ? 'success' : 'error'" class="field">
-      <div @touchstart.stop class="ui input left icon">
+      <div :class="this.dueDate instanceof Date ? '' : 'disabled'" class="ui input left icon">
         <i class="clock icon"></i>
         <input
+          tabindex="-1"
           @input="(event) => validateTime(event)"
           @blur="!isTimeValid && (time = '00:00') && validateTime()"
           v-model="time"
-          style="max-width: 300px"
           type="text"
           placeholder="00:00"
         />
       </div>
     </div>
-  </form>
+  </div>
   <FadeTransition>
     <div v-if="active && showCalendar" class="ui raised segment center aligned calendaritem">
       <i class="icon angle left floated" @click="decMonth"></i>

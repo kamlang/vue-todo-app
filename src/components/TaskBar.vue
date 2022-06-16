@@ -131,7 +131,7 @@ export default {
     async updateTaskListOrder() {
       try {
         const accessToken = await this.$auth0.getAccessTokenSilently();
-        await axios.patch("https://localhost:8443/updateTaskListOrder",
+        await axios.patch("https://192.168.1.6:8443/updateTaskListOrder",
           {
             taskLists: this.taskListArray.map(taskList => taskList._id)
           },
@@ -149,7 +149,7 @@ export default {
 
       try {
         const accessToken = await this.$auth0.getAccessTokenSilently();
-        const response = await axios.put("https://localhost:8443/createTaskList",
+        const response = await axios.put("https://192.168.1.6:8443/createTaskList",
           {
             name: this.newTaskListName
           },
@@ -172,7 +172,7 @@ export default {
     async updateTaskList() {
       try {
         const accessToken = await this.$auth0.getAccessTokenSilently();
-        const response = await axios.patch("https://localhost:8443/updateTaskList",
+        const response = await axios.patch("https://192.168.1.6:8443/updateTaskList",
           {
             name: this.selectedTaskList,
             newName: this.newTaskListName
@@ -201,7 +201,7 @@ export default {
     async deleteTaskList(taskList) {
       try {
         const accessToken = await this.$auth0.getAccessTokenSilently();
-        await axios.delete("https://localhost:8443/deleteTaskList", {
+        await axios.delete("https://192.168.1.6:8443/deleteTaskList", {
           data: {
             name: taskList
           },
@@ -221,7 +221,7 @@ export default {
     async getTaskList() {
       try {
         const accessToken = await this.$auth0.getAccessTokenSilently();
-        const response = await axios.get("https://localhost:8443/getTaskList", {
+        const response = await axios.get("https://192.168.1.6:8443/getTaskList", {
           headers: {
             "Authorization": `Bearer ${accessToken}`,
             "Content-type": "application/json; charset=UTF-8"

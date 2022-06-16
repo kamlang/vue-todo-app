@@ -30,7 +30,6 @@ export default {
   },
   methods: {
     toggleShowCompleted() {
-      this.showCompleted = !this.showCompleted
       this.$emit('toggleShowCompleted', this.showCompleted)
     },
     setDueDateHandler(date) {
@@ -39,7 +38,7 @@ export default {
     async addTask() {
       try {
         const accessToken = await this.$auth0.getAccessTokenSilently();
-        const response = await axios.put("https://localhost:8443/addTask",
+        const response = await axios.put("https://192.168.1.6:8443/addTask",
           {
             body: this.newTask,
             dueDate: this.dueDate,
@@ -74,34 +73,37 @@ export default {
     <div
       :data-tooltip="showCompleted ? 'Hide completed tasks' : 'Show completed tasks'"
       @keydown.space.stop="showCompleted = !showCompleted"
-      class="ui button right floated"
+      class="ui toggle checkbox right floated"
       @click.stop="toggleShowCompleted"
-    >{{ !showCompleted ? 'Show completed tasks' : 'Hide completed tasks' }}</div>
-    <i v-if="showTaskForm" class="angle up icon"></i>
-    <div class="ui button" v-else>
-      <i class="angle down icon"></i>
-      Create new task
+    >
+      <input type="checkbox" name="public" />
+      <label></label>
     </div>
+    <i v-if="showTaskForm" class="angle up icon"></i>
+    <i v-else class="angle down icon"></i>
   </div>
 
   <FadeTransition>
     <div v-if="showTaskForm" class="ui clearing segment">
-      <div class="ui form">
+      <form class="ui form">
         <div class="field">
           <label></label>
           <textarea rows="8" v-model="newTask" placeholder="Add a task ..."></textarea>
         </div>
         <Calendar :active="true" :injectedDueDate="dueDate" @dueDateSet="setDueDateHandler"></Calendar>
-        <button
-          v-if="newTask"
-          data-tooltip="Add a new task"
-          class="ui button icon right floated"
-          @click="addTask"
-        >
-          <i class="calendar plus icon"></i>
-          Add task
-        </button>
-      </div>
+        <div v-if="newTask" class="field">
+          <div
+            @submit.prevent
+            @click="addTask"
+            @keydown.enter="addTask"
+            class="ui button"
+            tabindex="0"
+          >
+            <i class="calendar plus icon"></i>
+            Add Task
+          </div>
+        </div>
+      </form>
     </div>
   </FadeTransition>
 </template>
@@ -111,5 +113,8 @@ export default {
   float: right !important;
   margin-right: 0em !important;
   margin-left: 1em !important;
+}
+.checkbox[class*="vertical align"] {
+  vertical-align: middle;
 }
 </style>
