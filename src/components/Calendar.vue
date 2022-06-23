@@ -121,6 +121,7 @@ export default {
     },
     unSetDueDate() {
       this.dueDate = ""
+      this.time = "00:00"
       this.showCalendar = false
       this.$emit('dueDateSet', "")
     },

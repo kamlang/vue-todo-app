@@ -154,7 +154,7 @@ describe("", () => {
     expect(taskArray.at(0).text()).toBe("taskList3 (1)")
     expect(taskArray.at(1).text()).toBe("taskList2 (1)")
   })
-  it("rename and create and task list with already exisiting names.", async () => {
+  it("rename and create a task list with already exisiting names.", async () => {
     /* User tries to rename a task list with a name which already exists
     Then he tries to create a new one with an already existing name, 
     an error message should be displayed and user should be able to close it using
@@ -227,7 +227,7 @@ describe("", () => {
     Then he clicks on edit and use the cancel button, so task should remains
     unchanged, then he clicks on edit and change the content of the task to
     editBodyTest" change should be reflected.
-    Then he delete the task warning message should be displayed. 
+    Then he delete the task, a warning message should be displayed. 
     He clicks the "Yes" button, so there should be no task left.
     */
 
@@ -252,7 +252,7 @@ describe("", () => {
     expect(editTaskButton.exists()).toBe(true)
     expect(deleteTaskButton.exists()).toBe(true)
     expect(markAsCompletedButton.exists()).toBe(true)
-    await editTaskButton.trigger('click')
+    await editTaskButton.trigger('mouseup')
 
     const confirmEditButton = wrapper.get('[data-test-id=confirmEditButton]')
     const cancelEditButton = wrapper.get('[data-test-id=cancelEditButton]')
@@ -262,7 +262,7 @@ describe("", () => {
     await taskBody.trigger('click')
 
     editTaskButton = wrapper.get('[data-test-id=editTaskButton]')
-    await editTaskButton.trigger('click')
+    await editTaskButton.trigger('mouseup')
 
     const editInputBox = wrapper.get('[data-test-id=editInputBox]')
     expect(editInputBox.exists()).toBe(true)
@@ -276,7 +276,7 @@ describe("", () => {
     await taskBody.trigger('click')
 
     deleteTaskButton = wrapper.get('[data-test-id=deleteTaskButton]')
-    await deleteTaskButton.trigger('click')
+    await deleteTaskButton.trigger('mouseup')
 
     const warnYes = wrapper.get('[data-test-id=warnYes]')
     await warnYes.trigger('click')
@@ -288,12 +288,38 @@ describe("", () => {
 
   })
 
-  // next: add a task, 
-  //  mark a task as completed put it pack as not ocmpleted,
-  // Also test calendar with valid and invalid due date
+  /* TODO: add a task, mark a task as completed put it back as not ocmpleted,
+   Also test calendar with valid and invalid due date
+   push to the top button*/
+
   it('testing drag and drop', async () => {
-    /* User clicks on a task header. While mouse left button is held down,
-    he should be able to move the task around, and to insert it at a specific position when mouse button is released.*/
+    /* User has two tasks, he takes the last task in the list and
+    drag it over the first. Order of tasks should be switched. */
+    axios.post = vi.fn()
+      .mockImplementationOnce(() => {
+        return { data: [{ body: "bodyTest1", completed: false }, { body: "bodyTest2", completed: false }] }
+      })
+    const wrapper = mount(App)
+
+    await flushPromises()
+    expect(axios.get).toHaveBeenCalledOnce()
+
+    let taskListArray = wrapper.findAll('[data-test-id=taskListName]')
+    expect(taskListArray.at(0).text()).toBe("taskList1 (1)")
+    expect(taskListArray.at(1).text()).toBe("taskList2 (1)")
+    expect(axios.post).toHaveBeenCalledOnce()
+
+    let firstTaskHeader = wrapper.get('[data-test-id=taskHeader-0]')
+    let lastTaskHeader = wrapper.get('[data-test-id=taskHeader-1]')
+    let firstTask = wrapper.find('[data-test-id=taskBody-0]')
+    expect(firstTask.text()).toEqual("bodyTest1")
+
+    await lastTaskHeader.trigger('dragstart')
+    await firstTaskHeader.trigger('dragenter')
+    await firstTaskHeader.trigger('drop')
+
+    firstTask = wrapper.find('[data-test-id=taskBody-0]')
+    expect(firstTask.text()).toEqual("bodyTest2")
 
   })
 })

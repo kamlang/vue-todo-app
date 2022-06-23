@@ -33,7 +33,7 @@ export default {
       if (this.selectedTaskList) {
         try {
           const accessToken = await this.$auth0.getAccessTokenSilently();
-          const response = await axios.post("https://api-todo.glgmsh.com/getTasks",
+          const response = await axios.post("https://192.168.1.6:8443/getTasks",
             {
               name: this.selectedTaskList
             },
@@ -54,7 +54,6 @@ export default {
   methods: {
     cancelEditTask(task) {
       task.selected = false
-      task.title = undefined
       task.edit = false
       task.dueDate = task.origDueDate
     },
@@ -95,7 +94,7 @@ export default {
     async updateTaskOrder() {
       try {
         const accessToken = await this.$auth0.getAccessTokenSilently();
-        await axios.patch("https://api-todo.glgmsh.com/updateTaskOrder",
+        await axios.patch("https://192.168.1.6:8443/updateTaskOrder",
           {
             name: this.selectedTaskList,
             tasks: this.tasks.map(task => task._id)
@@ -113,7 +112,7 @@ export default {
     async deleteTask(task) {
       try {
         const accessToken = await this.$auth0.getAccessTokenSilently();
-        await axios.delete("https://api-todo.glgmsh.com/deleteTask", {
+        await axios.delete("https://192.168.1.6:8443/deleteTask", {
           data: {
             _id: task._id
           },
@@ -131,7 +130,7 @@ export default {
     async updateTask(task) {
       try {
         const accessToken = await this.$auth0.getAccessTokenSilently();
-        await axios.patch("https://api-todo.glgmsh.com/updateTask",
+        await axios.patch("https://192.168.1.6:8443/updateTask",
           {
             _id: task._id,
             title: task.title,
@@ -203,7 +202,7 @@ export default {
       this.unSetDragTarget()
       this.draggedIndex = ""
     },
-    handleTouchMove(index) {
+    handleTouchMove() {
       this.showMenu = false
       this.touchTimerStart = new Date().setFullYear(3000)
     },
@@ -249,7 +248,7 @@ export default {
           @click="task.selected = true"
           @touchstart="handleTouchStart(index)"
           @touchend.prevent="handleTouchEnd(index)"
-          @touchmove="handleTouchMove(index)"
+          @touchmove="handleTouchMove()"
           @blur="task.selected = false"
           :style="[task.isDragTarget ? 'border-top: solid' : 'border-top: none !important', 'z-index = -1']"
           :hidden="task.completed !== showCompleted"
@@ -259,6 +258,7 @@ export default {
         >
           <div
             :class="task.completed ? 'completed' : 'notCompleted'"
+            :data-test-id="'taskHeader-' + index"
             class="ui segment vertically attached fitted taskheader"
             @click.prevent
             :style="task.draggable && 'cursor: grab'"
