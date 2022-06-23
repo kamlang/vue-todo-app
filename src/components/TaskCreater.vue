@@ -40,7 +40,7 @@ export default {
     async addTask() {
       try {
         const accessToken = await this.$auth0.getAccessTokenSilently();
-        const response = await axios.put("https://192.168.1.6:8443/addTask",
+        const response = await axios.put("https://api-todo.glgmsh.com/addTask",
           {
             title: this.newTaskTitle,
             body: this.newTask,

@@ -33,7 +33,7 @@ export default {
       if (this.selectedTaskList) {
         try {
           const accessToken = await this.$auth0.getAccessTokenSilently();
-          const response = await axios.post("https://192.168.1.6:8443/getTasks",
+          const response = await axios.post("https://api-todo.glgmsh.com/getTasks",
             {
               name: this.selectedTaskList
             },
@@ -54,6 +54,7 @@ export default {
   methods: {
     cancelEditTask(task) {
       task.selected = false
+      task.title = undefined
       task.edit = false
       task.dueDate = task.origDueDate
     },
@@ -94,7 +95,7 @@ export default {
     async updateTaskOrder() {
       try {
         const accessToken = await this.$auth0.getAccessTokenSilently();
-        await axios.patch("https://192.168.1.6:8443/updateTaskOrder",
+        await axios.patch("https://api-todo.glgmsh.com/updateTaskOrder",
           {
             name: this.selectedTaskList,
             tasks: this.tasks.map(task => task._id)
@@ -112,7 +113,7 @@ export default {
     async deleteTask(task) {
       try {
         const accessToken = await this.$auth0.getAccessTokenSilently();
-        await axios.delete("https://192.168.1.6:8443/deleteTask", {
+        await axios.delete("https://api-todo.glgmsh.com/deleteTask", {
           data: {
             _id: task._id
           },
@@ -130,7 +131,7 @@ export default {
     async updateTask(task) {
       try {
         const accessToken = await this.$auth0.getAccessTokenSilently();
-        await axios.patch("https://192.168.1.6:8443/updateTask",
+        await axios.patch("https://api-todo.glgmsh.com/updateTask",
           {
             _id: task._id,
             title: task.title,
