@@ -56,6 +56,7 @@ export default {
       task.selected = false
       task.edit = false
       task.dueDate = task.origDueDate
+      task.editedBody = task.body
     },
 
     formatedDate(date) {
@@ -128,6 +129,9 @@ export default {
       }
     },
     async updateTask(task) {
+      if (task.editedBody) {
+        task.body = task.editedBody
+      }
       try {
         const accessToken = await this.$auth0.getAccessTokenSilently();
         await axios.patch("https://192.168.1.6:8443/updateTask",
@@ -310,11 +314,11 @@ export default {
                 <a
                   data-test-id="editTaskButton"
                   class="ui icon item"
-                  @mouseup.stop="task.edit = !task.edit"
+                  @mouseup.stop="task.edit = !task.edit && (task.editedBody = task.body)"
                   @click.prevent.stop
                   @touchstart.prevent.stop
                   @touchmove.prevent
-                  @touchend.stop="task.edit = !task.edit"
+                  @touchend.stop="task.edit = !task.edit && (task.editedBody = task.body)"
                 >
                   <i class="edit icon"></i>
                 </a>
@@ -364,7 +368,7 @@ export default {
                     @blur.self="(event) => event.target.blur()"
                     data-test-id="editInputBox"
                     rows="6"
-                    v-model="task.body"
+                    v-model="task.editedBody"
                   >
           {{ task.body }}
           </textarea>
