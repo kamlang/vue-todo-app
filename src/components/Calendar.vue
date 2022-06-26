@@ -72,7 +72,7 @@
 
 <script>
 import Calendar from "../calendar"
-import moment from "moment"
+import dayjs from "dayjs"
 import FadeTransition from "./FadeTransition.vue"
 export default {
   components: {
@@ -126,7 +126,7 @@ export default {
       this.$emit('dueDateSet', "")
     },
     getCleanDate(date) {
-      return moment(date).format("MMMM YY")
+      return dayjs(date).format("MMMM YY")
     },
 
     isTodayOrDueDate(date) {
@@ -154,7 +154,7 @@ export default {
     formatedDueDate() {
       if (this.injectedDueDate) {
         this.dueDate = new Date(this.injectedDueDate)
-        return moment(this.dueDate).format("LL")
+        return dayjs(this.dueDate).format("LL")
       } else {
         return ""
       }

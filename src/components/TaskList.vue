@@ -1,5 +1,5 @@
 <script>
-import moment from "moment"
+import dayjs from "dayjs"
 import TaskCreater from "./TaskCreater.vue"
 import axios from "axios"
 import Warning from "./Warning.vue"
@@ -60,7 +60,7 @@ export default {
     },
 
     formatedDate(date) {
-      return moment(date).format("LLLL")
+      return dayjs(date).format("LLLL")
     },
     setDueDateHandler(date, task) {
       if (task.origDueDate === undefined) {
