@@ -5,6 +5,7 @@ import axios from "axios"
 import Warning from "./Warning.vue"
 import FadeTransition from "./FadeTransition.vue"
 import Calendar from "./Calendar.vue"
+import LocalizedFormat from 'dayjs/plugin/localizedFormat'
 
 export default {
   emits: ['refreshTaskBar', 'error'],
@@ -60,7 +61,8 @@ export default {
     },
 
     formatedDate(date) {
-      return dayjs(date).format("LLLL")
+      dayjs.extend(LocalizedFormat)
+      return dayjs(date).format("LLL")
     },
     setDueDateHandler(date, task) {
       if (task.origDueDate === undefined) {
