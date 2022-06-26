@@ -52,6 +52,11 @@ export default {
       }
     }
   },
+  computed: {
+    computedTasks() {
+      return this.tasks.filter(task => task.completed === this.showCompleted)
+    }
+  },
   methods: {
     cancelEditTask(task) {
       task.selected = false
@@ -59,7 +64,6 @@ export default {
       task.dueDate = task.origDueDate
       task.editedBody = task.body
     },
-
     formatedDate(date) {
       dayjs.extend(LocalizedFormat)
       return dayjs(date).format("LLL")
@@ -241,9 +245,9 @@ export default {
       ></TaskCreater>
       <TransitionGroup name="list">
         <div
-          class="ui segment attached"
+          class="ui segment attached task-wrapper"
           style="padding-top: 5px; padding-left: 10px; padding-right: 10px; padding-bottom: 5px; border-bottom: none !important;"
-          v-for="(task,index) in tasks"
+          v-for="(task,index) in computedTasks"
           @dragover.prevent
           @dragstart="handleDragStart(index)"
           @drop="handleDropOver(index)"
@@ -257,7 +261,6 @@ export default {
           @touchmove="handleTouchMove()"
           @blur="task.selected = false"
           :style="[task.isDragTarget ? 'border-top: solid' : 'border-top: none !important', 'z-index = -1']"
-          :hidden="task.completed !== showCompleted"
           :key="index"
           :class="[task.selected && 'taskelement-active', index === this.draggedIndex ? 'horizontal-shake' : '', task.selected ? '' : 'secondary']"
           :draggable="task.draggable"
@@ -442,7 +445,7 @@ export default {
 .taskelement-active {
   opacity: 1;
 }
-.list-move, /* apply transition to moving elements */
+.list-move,
 .list-enter-active {
   transition: all 0.6s ease;
 }
@@ -457,18 +460,28 @@ export default {
 .horizontal-shake {
   animation: horizontal-shaking 0.5s infinite;
 }
+
+@keyframes fade-opacity {
+  from {
+    background-color: red;
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
 @keyframes horizontal-shaking {
   0% {
     transform: translateX(0);
   }
   25% {
-    transform: translateX(2px);
+    transform: translateX(1px);
   }
   50% {
-    transform: translateX(-2px);
+    transform: translateX(-1px);
   }
   75% {
-    transform: translateX(2px);
+    transform: translateX(1px);
   }
   100% {
     transform: translateX(0);
