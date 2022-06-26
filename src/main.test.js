@@ -253,6 +253,11 @@ describe("", () => {
     expect(deleteTaskButton.exists()).toBe(true)
     expect(markAsCompletedButton.exists()).toBe(true)
     await editTaskButton.trigger('mouseup')
+    let editInputBox = wrapper.get('[data-test-id=editInputBox]')
+    await editInputBox.setValue('editBodyTest')
+
+    /* Editing the task and pressing cancel, task should remain unchanged
+    (Added later on as regression test)*/
 
     const confirmEditButton = wrapper.get('[data-test-id=confirmEditButton]')
     const cancelEditButton = wrapper.get('[data-test-id=cancelEditButton]')
@@ -264,7 +269,8 @@ describe("", () => {
     editTaskButton = wrapper.get('[data-test-id=editTaskButton]')
     await editTaskButton.trigger('mouseup')
 
-    const editInputBox = wrapper.get('[data-test-id=editInputBox]')
+    editInputBox = wrapper.get('[data-test-id=editInputBox]')
+    expect(editInputBox.text()).toBe("bodyTest")
     expect(editInputBox.exists()).toBe(true)
     await editInputBox.setValue('editBodyTest')
     await confirmEditButton.trigger('click')
@@ -322,4 +328,5 @@ describe("", () => {
     expect(firstTask.text()).toEqual("bodyTest2")
 
   })
+  it('testing')
 })
