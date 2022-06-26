@@ -461,15 +461,6 @@ export default {
   animation: horizontal-shaking 0.5s infinite;
 }
 
-@keyframes fade-opacity {
-  from {
-    background-color: red;
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
 @keyframes horizontal-shaking {
   0% {
     transform: translateX(0);
