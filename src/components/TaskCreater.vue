@@ -9,14 +9,14 @@ export default {
     Calendar,
     FadeTransition
   },
+
   data() {
     return {
-      newTask: "",
+      newTaskBody: "",
       newTaskTitle: "",
+      newTaskDueDate: "",
       showCompleted: false,
       showTaskForm: false,
-      dueDate: "",
-      activeCalendar: true
     }
   },
   props: {
@@ -25,8 +25,8 @@ export default {
   watch: {
     selectedTaskList() {
       this.showTaskForm = false
-      this.dueDate = ""
-      this.newTask = ""
+      this.newTaskDueDate = ""
+      this.newTaskBody = ""
       this.newTaskTitle = ""
     },
   },
@@ -35,17 +35,17 @@ export default {
       this.$emit('toggleShowCompleted', this.showCompleted)
     },
     setDueDateHandler(date) {
-      this.dueDate = date
+      this.newTaskDueDate = date
     },
     async addTask() {
       try {
         const accessToken = await this.$auth0.getAccessTokenSilently();
         const response = await axios.put("https://192.168.1.6:8443/addTask",
           {
+            name: this.selectedTaskList,
             title: this.newTaskTitle,
-            body: this.newTask,
-            dueDate: this.dueDate,
-            name: this.selectedTaskList
+            body: this.newTaskBody,
+            dueDate: this.newTaskDueDate,
           },
           {
             headers: {
@@ -56,8 +56,8 @@ export default {
         const data = await response.data
         this.$emit('newTaskCreated', data)
         this.$emit('error', '')
-        this.newTask = ""
-        this.dueDate = ""
+        this.newTaskBody = ""
+        this.newTaskDueDate = ""
         this.newTaskTitle = ""
       } catch (e) {
         console.log(e)
@@ -73,9 +73,10 @@ export default {
     tabindex="0"
     @keydown.space.prevent="showTaskForm = !showTaskForm"
     @click="showTaskForm = !showTaskForm"
+    title="Create a new task."
   >
     <div
-      :data-tooltip="showCompleted ? 'Hide completed tasks' : 'Show completed tasks'"
+      :title="showCompleted ? 'Hide completed tasks' : 'Show completed tasks'"
       @keydown.space.stop="showCompleted = !showCompleted"
       class="ui toggle checkbox right floated"
       @click.stop="toggleShowCompleted"
@@ -95,10 +96,10 @@ export default {
         </div>
         <div class="field">
           <label></label>
-          <textarea rows="8" v-model="newTask" placeholder="Add a task..."></textarea>
+          <textarea rows="8" v-model="newTaskBody" placeholder="Add a task..."></textarea>
         </div>
-        <Calendar :active="true" :injectedDueDate="dueDate" @dueDateSet="setDueDateHandler"></Calendar>
-        <div v-if="newTask" class="field">
+        <Calendar :active="true" :injectedDueDate="newTaskDueDate" @dueDateSet="setDueDateHandler"></Calendar>
+        <div v-if="newTaskBody" class="field">
           <div
             @submit.prevent
             @click="addTask"
