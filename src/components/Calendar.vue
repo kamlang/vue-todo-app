@@ -4,6 +4,7 @@
       <div class="ui left icon input" :class="(showCalendar || dueDate) && 'action'">
         <i class="calendar icon"></i>
         <input
+          data-test-id="input-duedate"
           @touchend.prevent.stop="active && (showCalendar = !showCalendar)"
           @mouseup="showCalendar = !showCalendar"
           @keydown.prevent
@@ -16,6 +17,7 @@
 
         <button
           v-if="dueDate && active || showCalendar"
+          data-test-id="delete-duedate-button"
           @click.stop="unSetDueDate"
           @touchstart.prevent.stop
           @touchend.stop="unSetDueDate"
@@ -29,8 +31,9 @@
       <div :class="this.dueDate instanceof Date ? '' : 'disabled'" class="ui input left icon">
         <i class="clock icon"></i>
         <input
+          data-test-id="input-time"
           tabindex="-1"
-          @input="(event) => validateTime(event)"
+          @input="validateTime"
           @blur="!isTimeValid && (time = '00:00') && validateTime()"
           v-model="time"
           type="text"
@@ -40,9 +43,14 @@
     </div>
   </div>
   <FadeTransition>
-    <div v-if="active && showCalendar" class="ui raised segment center aligned calendaritem">
+    <div
+      v-if="active && showCalendar"
+      class="ui raised segment center aligned calendaritem"
+      data-test-id="calendar"
+      draggable="true"
+    >
       <i class="icon angle left floated" @click="decMonth"></i>
-      <span>{{ getCleanDate(selectedMonth) }}</span>
+      <span data-test-id="current-month">{{ getCleanDate(selectedMonth) }}</span>
       <i class="icon angle right right floated" @click="incMonth"></i>
       <table class="ui celled table fixed unstackable">
         <thead>
@@ -54,7 +62,7 @@
           <tr v-for="line in computedCalendar.daysGrid">
             <td
               v-for="date in line"
-              :data-test-id="date.getDay()"
+              :data-test-id="date.getMonth() + '-' + date.getDate()"
               :class="[isSelectable(date) ? 'selectable' : 'disabled', isTodayOrDueDate(date) && 'highlighted']"
               @click.stop
               @touchstart.prevent.stop
@@ -98,26 +106,26 @@ export default {
     active: Boolean
   },
   methods: {
-    validateTime(event) {
+    validateTime() {
       const timeRegEx = /^([0-9]|[0-1][0-9]|2[0-3]):[0-5][0-9]$/g
       if (timeRegEx.test(this.time)) {
         this.isTimeValid = true
-        if (this.dueDate instanceof Date) {
-          this.setDueDate(this.dueDate)
-        }
+        this._setDueDateTime()
       } else {
         this.isTimeValid = false
       }
     },
-    setDueDate(selectedDate) {
-      this.dueDate = selectedDate
+    _setDueDateTime() {
       let hours = this.time.split(':')[0]
       let minutes = this.time.split(':')[1]
       this.dueDate.setHours(hours)
       this.dueDate.setMinutes(minutes)
+      this.setDueDate(this.dueDate)
+    },
+    setDueDate(selectedDate) {
+      this.dueDate = selectedDate
       this.$emit('dueDateSet', this.dueDate.toString())
       this.showCalendar = false
-      console.log(this.dueDate)
     },
     unSetDueDate() {
       this.dueDate = ""
@@ -130,12 +138,15 @@ export default {
     },
 
     isTodayOrDueDate(date) {
+      // if dueDate is not set today date is highlighted in calendar.
+      // if dueDate is set then it's highlighted.
       let today = new Date()
       return this.dueDate instanceof Date ?
         this.calendar.isSameDay(this.dueDate, date) :
         this.calendar.isSameDay(today, date)
     },
     isSelectable(date) {
+      // A date is selectable only if it's in the future and belongs to the current month.
       let today = new Date()
       return (this.calendar.isSameDay(today, date) ||
         today.getTime() <= date.getTime()) &&
@@ -154,6 +165,7 @@ export default {
     formatedDueDate() {
       if (this.injectedDueDate) {
         this.dueDate = new Date(this.injectedDueDate)
+        this.time = dayjs(this.dueDate).format("HH:mm")
         return dayjs(this.dueDate).format("LL")
       } else {
         return ""
@@ -162,6 +174,7 @@ export default {
     selectedMonth() {
       return this.calendar.getDate()
     },
+
     computedCalendar() {
       this.calendar.create()
       return { headers: this.calendar.headers, daysGrid: this.calendar.daysGrid }
