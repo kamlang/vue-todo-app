@@ -277,6 +277,7 @@ export default {
         tabindex="0"
         data-test-id="deleteTaskList"
         class="item"
+        title="Delete a task list."
         @click="taskListToDelete = selectedTaskList"
         @keydown.space.prevent="taskListToDelete = selectedTaskList"
         v-if="selectedTaskList"
@@ -344,6 +345,7 @@ export default {
       <a
         class="item"
         data-test-id="createNewTaskListButton"
+        title="Create a new task list."
         tabindex="0"
         @click="newTaskListHandler"
         @keydown.space.prevent="newTaskListHandler"
