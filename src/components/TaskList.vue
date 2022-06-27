@@ -301,6 +301,7 @@ export default {
                   tabindex="0"
                   data-test-id="markAsCompletedButton"
                   class="ui icon item"
+                  title="Mark this task as completed."
                   @mouseup.stop="markTaskAsCompleted(task)"
                   @click.prevent.stop
                   @touchstart.prevent.stop
@@ -311,6 +312,7 @@ export default {
                 </a>
                 <a
                   tabindex="0"
+                  title="Delete this task."
                   data-test-id="deleteTaskButton"
                   class="ui icon item"
                   @mouseup.stop="taskDeleteHandler(task)"
@@ -324,6 +326,7 @@ export default {
 
                 <a
                   data-test-id="editTaskButton"
+                  title="Edit this task."
                   class="ui icon item"
                   @mouseup.stop="task.edit = !task.edit;
 task.editedBody = task.body
@@ -340,6 +343,7 @@ task.editedBody = task.body
                 <a
                   tabindex="0"
                   data-test-id="pushTopButton"
+                  title="Push this task to the top."
                   class="ui icon item"
                   @mouseup.stop="pushTaskTop(index)"
                   @click.prevent.stop
