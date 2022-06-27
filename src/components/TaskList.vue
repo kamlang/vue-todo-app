@@ -82,6 +82,8 @@ export default {
       this.updateTask(task)
     },
     taskDeleteHandler(task) {
+      /* mark a task a task as potentially deleted
+      warning message is triggered then user can confirms if task should really be deleted */
       task.selected = false
       task.delete = true
     },
@@ -95,6 +97,7 @@ export default {
     },
 
     newTaskCreatedHandler(data) {
+      // to handle not completed task handler
       this.$emit('refreshTaskBar')
       this.tasks.unshift(data)
     },
@@ -175,6 +178,7 @@ export default {
       })
     },
     handleTouchStart(index) {
+      // Only shows menu for 4sec if user touches the task.
       this.showMenu = true
       this.clearTimeout && clearTimeout(this.clearTimeout)
       this.clearTimeout = setTimeout(() => this.showMenu = false, 4000)
@@ -185,7 +189,6 @@ export default {
       }
       let now = new Date()
       this.touchTimerStart = now.valueOf()
-
     },
     unSetDragTarget() {
       this.tasks = this.tasks.map(t => {
@@ -214,15 +217,18 @@ export default {
     },
     handleTouchMove() {
       this.showMenu = false
+      // If user is moving then set touchTimerStart in the future so
+      // it won't trigger move tasks functionality.
       this.touchTimerStart = new Date().setFullYear(3000)
     },
     handleTouchEnd(index) {
+      /* If user touches a task longer than minduration, then he can moves it. 
+       if shorter simply select the task. */
       let minduration = 500
       let now = new Date()
       let delta = now.valueOf() - this.touchTimerStart
       if (delta >= minduration) this.handleDragStart(index)
       else if (this.tasks[index].isDragTarget !== true) {
-        //        this.tasks[index].selected = !this.tasks[index].selected
         this.tasks[index].selected = true
       } else if (this.tasks[index].isDragTarget === true) {
         this.handleDropOver(index)
@@ -266,7 +272,7 @@ export default {
           :draggable="task.draggable"
         >
           <div
-            :class="task.completed ? 'completed' : 'notCompleted'"
+            :class="task.completed ? 'completed' : 'not-completed'"
             :data-test-id="'taskHeader-' + index"
             class="ui segment vertically attached fitted taskheader"
             @click.prevent
@@ -319,11 +325,15 @@ export default {
                 <a
                   data-test-id="editTaskButton"
                   class="ui icon item"
-                  @mouseup.stop="task.edit = !task.edit && (task.editedBody = task.body)"
+                  @mouseup.stop="task.edit = !task.edit;
+task.editedBody = task.body
+                  "
                   @click.prevent.stop
                   @touchstart.prevent.stop
                   @touchmove.prevent
-                  @touchend.stop="task.edit = !task.edit && (task.editedBody = task.body)"
+                  @touchend.stop="task.edit = !task.edit;
+task.editedBody = task.body
+                  "
                 >
                   <i class="edit icon"></i>
                 </a>
@@ -420,7 +430,7 @@ export default {
 .completed {
   background-color: rgb(174, 243, 255);
 }
-.notCompleted {
+.not-completed {
   background-color: rgb(255, 129, 156);
 }
 .icon[class*="right floated"] {
