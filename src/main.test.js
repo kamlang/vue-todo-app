@@ -119,7 +119,7 @@ describe("", () => {
     First time it doesn't enter a new name and cancel it input box should disappear. 
     Next he clicks again and enter "taskList3" as new name.
     name should be updated in task list bar. Then he tries to rename taskList2 to taskList3
-    which should display and error message.
+    which should display and error message as two task list can't have the same name.
     */
     axios.patch = vi.fn()
       .mockImplementationOnce(() => { return { data: {} } })
@@ -227,7 +227,7 @@ describe("", () => {
     Then he clicks on edit and use the cancel button, so task should remains
     unchanged, then he clicks on edit and change the content of the task to
     editBodyTest" change should be reflected.
-    Then he delete the task, a warning message should be displayed. 
+    Then he tries to delete the task, a warning message should be displayed. 
     He clicks the "Yes" button, so there should be no task left.
     */
 
@@ -294,10 +294,6 @@ describe("", () => {
 
   })
 
-  /* TODO: add a task, mark a task as completed put it back as not ocmpleted,
-   Also test calendar with valid and invalid due date
-   push to the top button*/
-
   it('testing drag and drop', async () => {
     /* User has two tasks, he takes the last task in the list and
     drag it over the first. Order of tasks should be switched. */
@@ -326,7 +322,141 @@ describe("", () => {
 
     firstTask = wrapper.find('[data-test-id=taskBody-0]')
     expect(firstTask.text()).toEqual("bodyTest2")
-
   })
-  it('testing')
+
+  it('push to the top button', async () => {
+    /* User has two tasks, he clicks the push to the top button,
+    previously second task should now be the first one.*/
+    axios.post = vi.fn()
+      .mockImplementationOnce(() => {
+        return { data: [{ body: "bodyTest1", completed: false }, { body: "bodyTest2", completed: false }] }
+      })
+    const wrapper = mount(App)
+
+    await flushPromises()
+    expect(axios.get).toHaveBeenCalledOnce()
+    let firstTask = wrapper.find('[data-test-id=taskBody-0]')
+    let secondTask = wrapper.get('[data-test-id=taskBody-1]')
+    expect(firstTask.text()).toBe("bodyTest1")
+    expect(secondTask.text()).toBe("bodyTest2")
+    await secondTask.trigger('click')
+
+    let pushTopButton = wrapper.get('[data-test-id=pushTopButton]')
+    await pushTopButton.trigger('mouseup')
+
+    firstTask = wrapper.find('[data-test-id=taskBody-0]')
+    secondTask = wrapper.get('[data-test-id=taskBody-1]')
+
+    expect(firstTask.text()).toBe("bodyTest2")
+    expect(secondTask.text()).toBe("bodyTest1")
+  })
+
+  it('mark as completed', async () => {
+    /* User has two tasks he marks one as completed, so it should be removed.
+    Then he clicks on toggle "show completed" button he should see it there.
+    then he put it back as not completed, task should appear in the "not completed" list again.*/
+  })
+  it('edit duedate of a task using calendar component', async () => {
+    /* A user chooses to edit a task. Then he clicks on the date input field,
+ calendar component should shows up. User select a date in the past this should not be taken into account. Then he chooses a date in the future ( delete button should appear, if clicked input should be set back to "") Then he tries to set a time which is not valid.
+ Time value should be reset to 00:00. Then he sets a valid time.
+ Then he clicks cancel button, changes should do not have been updated when user tries to edit the task again.
+ Then he presses the editTask button once again and choose a valid date and time and press save. We're checking if the update request include the correct due date.
+ When trying to edit the task for one more time we should see the correct due date and time in the input fields. */
+
+    const date = new Date(2022, 6, 21, 19)
+    vi.setSystemTime(date)
+
+    axios.post = vi.fn()
+      .mockImplementation(() => {
+        return { data: [{ body: "bodyTest1", completed: false, dueDate: null }, { body: "bodyTest2", completed: false, dueDate: null }] }
+      })
+    axios.patch = vi.fn()
+    const wrapper = mount(App)
+    await flushPromises()
+    let firstTask = wrapper.find('[data-test-id=taskBody-0]')
+    let secondTask = wrapper.get('[data-test-id=taskBody-1]')
+    expect(firstTask.text()).toBe("bodyTest1")
+    expect(secondTask.text()).toBe("bodyTest2")
+    await secondTask.trigger('click')
+
+    let editTaskButton = wrapper.get('[data-test-id=editTaskButton]')
+    await editTaskButton.trigger('mouseup')
+
+    let inputDate = wrapper.get('[data-test-id=input-duedate]')
+    let inputTime = wrapper.get('[data-test-id=input-time]')
+
+    await inputDate.trigger('mouseup')
+    let calendar = wrapper.get('[data-test-id=calendar]')
+    let prevDate = wrapper.get('[data-test-id="6-19"]')
+    let futureDate = wrapper.get('[data-test-id="6-26"]')
+    // clicking a previous date should not do anything and calendar should remain opened.
+    await prevDate.trigger('click')
+    calendar = wrapper.get('[data-test-id=calendar]')
+    await futureDate.trigger('click')
+    // when a date is chose calendar should be closed.
+    expect(wrapper.find('[data-test-id=calendar]')
+      .exists()).toBe(false)
+    // if delete button is clicked then input field should be reset.
+    let deleteButton = wrapper.get('[data-test-id=delete-duedate-button]')
+    await deleteButton.trigger('click')
+    expect(inputDate.element.value).toBe("")
+
+    async function enterDueDate(action) {
+      await inputDate.trigger('mouseup')
+      calendar = wrapper.get('[data-test-id=calendar]')
+      futureDate = wrapper.get('[data-test-id="6-26"]')
+      await futureDate.trigger('click')
+
+      inputDate = wrapper.get('[data-test-id=input-duedate]')
+      expect(inputDate.element.value).toContain("July 26")
+      inputTime = wrapper.get('[data-test-id=input-time]')
+      // Invalid time should not be acceptable and field should be set back to 00:00
+      await inputTime.setValue("67:89")
+      await inputTime.trigger('blur')
+      expect(inputTime.element.value).toContain("00:00")
+      await inputTime.setValue("10:42")
+      expect(inputTime.element.value).toContain("10:42")
+
+      let cancelEditButton = wrapper.get('[data-test-id=cancelEditButton]')
+      let confirmEditButton = wrapper.get('[data-test-id=confirmEditButton]')
+
+      if (action === 'confirm') {
+        await confirmEditButton.trigger('click')
+        await flushPromises()
+        expect(axios.patch).toHaveBeenCalledWith(expect.anything(),
+          expect.objectContaining({ "dueDate": expect.stringMatching("Jul 26 2022 10:42") }), expect.anything())
+
+        secondTask = wrapper.get('[data-test-id=taskBody-1]')
+        await secondTask.trigger('click')
+        editTaskButton = wrapper.get('[data-test-id=editTaskButton]')
+        await editTaskButton.trigger('mouseup')
+
+        inputDate = wrapper.get('[data-test-id=input-duedate]')
+        inputTime = wrapper.get('[data-test-id=input-time]')
+
+        expect(inputDate.element.value).toContain("July 26")
+        expect(inputTime.element.value).toContain("10:42")
+      }
+      if (action === 'cancel') {
+        await cancelEditButton.trigger('click')
+        secondTask = wrapper.get('[data-test-id=taskBody-1]')
+        await secondTask.trigger('click')
+        editTaskButton = wrapper.get('[data-test-id=editTaskButton]')
+        await editTaskButton.trigger('mouseup')
+
+        inputDate = wrapper.get('[data-test-id=input-duedate]')
+        inputTime = wrapper.get('[data-test-id=input-time]')
+
+        expect(inputTime.element.value).toEqual("00:00")
+        expect(inputDate.element.value).toEqual("")
+      }
+    }
+    const testCases = ['cancel', 'confirm']
+    for (let testCase of testCases) {
+      await enterDueDate(testCase)
+    }
+  })
 })
+ //also test inc and dec month
+/* It has to be tested from taskCreater component but also from taskList component using task edit functionality. */
