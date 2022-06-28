@@ -467,9 +467,7 @@ describe("", () => {
     }
 
     const testCases = ['cancel', 'confirm']
-    for (let testCase of testCases) {
-      await enterDueDate(testCase)
-    }
+    for (let testCase of testCases) await enterDueDate(testCase)
   })
 })
 
