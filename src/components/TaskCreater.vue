@@ -25,6 +25,7 @@ export default {
   watch: {
     selectedTaskList() {
       this.showTaskForm = false
+      this.$refs.toggleShowCompletedCheckbox.checked = false
       this.newTaskDueDate = ""
       this.newTaskBody = ""
       this.newTaskTitle = ""
@@ -77,11 +78,12 @@ export default {
   >
     <div
       :title="showCompleted ? 'Hide completed tasks' : 'Show completed tasks'"
+      data-test-id="toggle-show-completed"
       @keydown.space.stop="showCompleted = !showCompleted"
       class="ui toggle checkbox right floated"
       @click.stop="toggleShowCompleted"
     >
-      <input type="checkbox" name="public" />
+      <input ref="toggleShowCompletedCheckbox" type="checkbox" name="public" />
       <label></label>
     </div>
     <i v-if="showTaskForm" class="angle up icon"></i>
