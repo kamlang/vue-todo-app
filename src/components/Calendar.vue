@@ -49,9 +49,9 @@
       data-test-id="calendar"
       draggable="true"
     >
-      <i class="icon angle left floated" @click="decMonth"></i>
+      <i data-test-id="dec-month" class="icon angle left floated" @click="decMonth"></i>
       <span data-test-id="current-month">{{ getCleanDate(selectedMonth) }}</span>
-      <i class="icon angle right right floated" @click="incMonth"></i>
+      <i data-test-id="inc-month" class="icon angle right right floated" @click="incMonth"></i>
       <table class="ui celled table fixed unstackable">
         <thead>
           <tr>
