@@ -46,6 +46,7 @@ export default {
             })
           this.tasks = await response.data
           this.newTask = ""
+          this.showCompleted = false
         } catch (e) {
           console.log(e)
         }
@@ -77,7 +78,7 @@ export default {
     setErrorMessage(errorMessage) {
       this.$emit('error', errorMessage)
     },
-    markTaskAsCompleted(task) {
+    toggleTaskCompleted(task) {
       task.completed = !task.completed
       this.updateTask(task)
     },
@@ -302,11 +303,11 @@ export default {
                   data-test-id="markAsCompletedButton"
                   class="ui icon item"
                   title="Mark this task as completed."
-                  @mouseup.stop="markTaskAsCompleted(task)"
+                  @mouseup.stop="toggleTaskCompleted(task)"
                   @click.prevent.stop
                   @touchstart.prevent.stop
                   @touchmove.prevent
-                  @touchend.stop="markTaskAsCompleted(task)"
+                  @touchend.stop="toggleTaskCompleted(task)"
                 >
                   <i :class="task.completed ? 'redo icon' : 'calendar check icon'"></i>
                 </a>
