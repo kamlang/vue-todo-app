@@ -6,10 +6,10 @@ const app = createApp(App);
 
 app.use(
   createAuth0({
-    domain:  process.env.AUTH0_DOMAIN
-    client_id:  process.env.AUTH0_CLIENT_ID
+    domain: process.env.AUTH0_DOMAIN,
+    client_id: process.env.AUTH0_CLIENT_ID,
     redirect_uri: window.location.origin,
-    audience: process.env.AUTH0_AUDIENCE
+    audience: process.env.AUTH0_AUDIENCE,
     cacheLocation: 'localstorage'
   })
 );
