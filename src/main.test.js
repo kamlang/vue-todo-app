@@ -17,7 +17,7 @@ beforeAll(async () => {
 
 beforeEach(async () => {
   axios.get = vi.fn()
-    .mockImplementationOnce(() => {
+    .mockImplementation(() => {
       return {
         data:
           [{ "name": "taskList1", "tasks": [1] }, { "name": "taskList2", "tasks": [1] }]
@@ -57,7 +57,6 @@ describe("", () => {
     let taskArray = wrapper.findAll('[data-test-id=taskListName]')
     expect(taskArray.at(0).text()).toBe("taskList1 (1)")
     expect(taskArray.at(1).text()).toBe("taskList2 (1)")
-
     expect(axios.post).toHaveBeenCalledOnce()
 
     const taskBody = wrapper.get('[data-test-id=taskBody-0]')
@@ -158,9 +157,9 @@ describe("", () => {
     /* User tries to rename a task list with a name which already exists
     Then he tries to create a new one with an already existing name, 
     an error message should be displayed and user should be able to close it using
-    the close icon. task list name in the task bar should remain unchanged. */
+    the close icon. Task list name in the task bar should remain unchanged. */
 
-    // mocking http error returned by the server
+    // mocking http error returned by the server.
     axios.patch = vi.fn()
       .mockImplementation(() =>
         new Promise((_, rej) => rej({ response: { data: { message: 'error' } } }))
@@ -205,7 +204,6 @@ describe("", () => {
     const createTaskInput = wrapper.get('[data-test-id=createNewTaskListInput]')
     await createTaskInput.setValue("taskList1 (1)")
 
-    confirmNewNameButton = wrapper.find('[data-test-id=validateTaskListNameButton]')
     expect(confirmNewNameButton.exists()).toBe(true)
     await createTaskInput.trigger('keydown.enter')
     await flushPromises()
@@ -249,9 +247,6 @@ describe("", () => {
     let editTaskButton = wrapper.get('[data-test-id=editTaskButton]')
     let deleteTaskButton = wrapper.get('[data-test-id=deleteTaskButton]')
     let markAsCompletedButton = wrapper.get('[data-test-id=markAsCompletedButton]')
-    expect(editTaskButton.exists()).toBe(true)
-    expect(deleteTaskButton.exists()).toBe(true)
-    expect(markAsCompletedButton.exists()).toBe(true)
     await editTaskButton.trigger('mouseup')
     let editInputBox = wrapper.get('[data-test-id=editInputBox]')
     await editInputBox.setValue('editBodyTest')
@@ -261,34 +256,23 @@ describe("", () => {
 
     const confirmEditButton = wrapper.get('[data-test-id=confirmEditButton]')
     const cancelEditButton = wrapper.get('[data-test-id=cancelEditButton]')
-    expect(confirmEditButton.exists()).toBe(true)
-    expect(cancelEditButton.exists()).toBe(true)
     await cancelEditButton.trigger('click')
     await taskBody.trigger('click')
-
-    editTaskButton = wrapper.get('[data-test-id=editTaskButton]')
     await editTaskButton.trigger('mouseup')
 
-    editInputBox = wrapper.get('[data-test-id=editInputBox]')
     expect(editInputBox.text()).toBe("bodyTest")
-    expect(editInputBox.exists()).toBe(true)
     await editInputBox.setValue('editBodyTest')
     await confirmEditButton.trigger('click')
     await flushPromises()
     expect(axios.patch).toHaveBeenCalledOnce()
 
-    taskBody = wrapper.get('[data-test-id=taskBody-0]')
     expect(taskBody.text()).toBe("editBodyTest")
     await taskBody.trigger('click')
-
-    deleteTaskButton = wrapper.get('[data-test-id=deleteTaskButton]')
     await deleteTaskButton.trigger('mouseup')
-
     const warnYes = wrapper.get('[data-test-id=warnYes]')
     await warnYes.trigger('click')
     await flushPromises()
     expect(axios.delete).toHaveBeenCalledOnce()
-
     taskBody = wrapper.find('[data-test-id=taskBody-0]')
     expect(taskBody.exists()).toBe(false)
 
@@ -320,7 +304,6 @@ describe("", () => {
     await firstTaskHeader.trigger('dragenter')
     await firstTaskHeader.trigger('drop')
 
-    firstTask = wrapper.find('[data-test-id=taskBody-0]')
     expect(firstTask.text()).toEqual("bodyTest2")
   })
 
@@ -344,7 +327,7 @@ describe("", () => {
     let pushTopButton = wrapper.get('[data-test-id=pushTopButton]')
     await pushTopButton.trigger('mouseup')
 
-    firstTask = wrapper.find('[data-test-id=taskBody-0]')
+    firstTask = wrapper.get('[data-test-id=taskBody-0]')
     secondTask = wrapper.get('[data-test-id=taskBody-1]')
 
     expect(firstTask.text()).toBe("bodyTest2")
@@ -353,8 +336,37 @@ describe("", () => {
 
   it('mark as completed', async () => {
     /* User has two tasks he marks one as completed, so it should be removed.
-    Then he clicks on toggle "show completed" button he should see it there.
-    then he put it back as not completed, task should appear in the "not completed" list again.*/
+    Then he clicks on the "toggle show completed" button he should see it there.
+    Then he put it back as not completed, task should appear in the "not completed" list again.*/
+    axios.post = vi.fn()
+      .mockImplementationOnce(() => {
+        return { data: [{ body: "bodyTest1", completed: false }, { body: "bodyTest2", completed: false }] }
+      })
+    const wrapper = mount(App)
+
+    await flushPromises()
+    expect(axios.get).toHaveBeenCalledOnce()
+    let firstTask = wrapper.find('[data-test-id=taskBody-0]')
+    let secondTask = wrapper.get('[data-test-id=taskBody-1]')
+    await secondTask.trigger('click')
+
+    let markAsCompletedButton = wrapper.get('[data-test-id=markAsCompletedButton]')
+    await markAsCompletedButton.trigger('mouseup')
+
+    secondTask = wrapper.find('[data-test-id=taskBody-1]')
+    expect(secondTask.exists()).toBe(false)
+
+    let toggleButton = wrapper.get('[data-test-id=toggle-show-completed]')
+    await toggleButton.trigger('click')
+    expect(firstTask.text()).toBe("bodyTest2")
+
+    await firstTask.trigger('click')
+    await markAsCompletedButton.trigger('mouseup')
+    await toggleButton.trigger('click')
+
+    secondTask = wrapper.get('[data-test-id=taskBody-1]')
+    expect(secondTask.text()).toBe("bodyTest2")
+
   })
   it('edit duedate of a task using calendar component', async () => {
     /* A user chooses to edit a task. Then he clicks on the date input field,
@@ -387,30 +399,41 @@ describe("", () => {
     let inputTime = wrapper.get('[data-test-id=input-time]')
 
     await inputDate.trigger('mouseup')
-    let calendar = wrapper.get('[data-test-id=calendar]')
+    wrapper.get('[data-test-id=calendar]')
+
+    // Pressing inc and dec month button.
+    let incMonthButton = wrapper.get('[data-test-id=inc-month]')
+    let decMonthButton = wrapper.get('[data-test-id=dec-month]')
+    let currentMonth = wrapper.get('[data-test-id=current-month]')
+
+    await incMonthButton.trigger('click')
+    expect(currentMonth.text()).toContain("Aug")
+    await decMonthButton.trigger('click')
+    expect(currentMonth.text()).toContain("Jul")
+
     let prevDate = wrapper.get('[data-test-id="6-19"]')
     let futureDate = wrapper.get('[data-test-id="6-26"]')
     // clicking a previous date should not do anything and calendar should remain opened.
     await prevDate.trigger('click')
-    calendar = wrapper.get('[data-test-id=calendar]')
     await futureDate.trigger('click')
-    // when a date is chose calendar should be closed.
+    // when a date is chosen calendar should be closed.
     expect(wrapper.find('[data-test-id=calendar]')
       .exists()).toBe(false)
+    expect(inputDate.element.value).toContain("July 26")
     // if delete button is clicked then input field should be reset.
     let deleteButton = wrapper.get('[data-test-id=delete-duedate-button]')
     await deleteButton.trigger('click')
     expect(inputDate.element.value).toBe("")
 
+    let cancelEditButton = wrapper.get('[data-test-id=cancelEditButton]')
+    let confirmEditButton = wrapper.get('[data-test-id=confirmEditButton]')
+
     async function enterDueDate(action) {
       await inputDate.trigger('mouseup')
-      calendar = wrapper.get('[data-test-id=calendar]')
       futureDate = wrapper.get('[data-test-id="6-26"]')
       await futureDate.trigger('click')
 
-      inputDate = wrapper.get('[data-test-id=input-duedate]')
       expect(inputDate.element.value).toContain("July 26")
-      inputTime = wrapper.get('[data-test-id=input-time]')
       // Invalid time should not be acceptable and field should be set back to 00:00
       await inputTime.setValue("67:89")
       await inputTime.trigger('blur')
@@ -418,31 +441,21 @@ describe("", () => {
       await inputTime.setValue("10:42")
       expect(inputTime.element.value).toContain("10:42")
 
-      let cancelEditButton = wrapper.get('[data-test-id=cancelEditButton]')
-      let confirmEditButton = wrapper.get('[data-test-id=confirmEditButton]')
-
       if (action === 'confirm') {
         await confirmEditButton.trigger('click')
         await flushPromises()
         expect(axios.patch).toHaveBeenCalledWith(expect.anything(),
           expect.objectContaining({ "dueDate": expect.stringMatching("Jul 26 2022 10:42") }), expect.anything())
 
-        secondTask = wrapper.get('[data-test-id=taskBody-1]')
         await secondTask.trigger('click')
-        editTaskButton = wrapper.get('[data-test-id=editTaskButton]')
         await editTaskButton.trigger('mouseup')
-
-        inputDate = wrapper.get('[data-test-id=input-duedate]')
-        inputTime = wrapper.get('[data-test-id=input-time]')
 
         expect(inputDate.element.value).toContain("July 26")
         expect(inputTime.element.value).toContain("10:42")
       }
       if (action === 'cancel') {
         await cancelEditButton.trigger('click')
-        secondTask = wrapper.get('[data-test-id=taskBody-1]')
         await secondTask.trigger('click')
-        editTaskButton = wrapper.get('[data-test-id=editTaskButton]')
         await editTaskButton.trigger('mouseup')
 
         inputDate = wrapper.get('[data-test-id=input-duedate]')
@@ -452,11 +465,12 @@ describe("", () => {
         expect(inputDate.element.value).toEqual("")
       }
     }
+
     const testCases = ['cancel', 'confirm']
     for (let testCase of testCases) {
       await enterDueDate(testCase)
     }
   })
 })
- //also test inc and dec month
-/* It has to be tested from taskCreater component but also from taskList component using task edit functionality. */
+
+// Test Task Creater
