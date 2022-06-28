@@ -1,10 +1,11 @@
 <script>
-import moment from "moment"
+import dayjs from "dayjs"
 import TaskCreater from "./TaskCreater.vue"
 import axios from "axios"
 import Warning from "./Warning.vue"
 import FadeTransition from "./FadeTransition.vue"
 import Calendar from "./Calendar.vue"
+import LocalizedFormat from 'dayjs/plugin/localizedFormat'
 
 export default {
   emits: ['refreshTaskBar', 'error'],
@@ -45,10 +46,16 @@ export default {
             })
           this.tasks = await response.data
           this.newTask = ""
+          this.showCompleted = false
         } catch (e) {
           console.log(e)
         }
       }
+    }
+  },
+  computed: {
+    computedTasks() {
+      return this.tasks.filter(task => task.completed === this.showCompleted)
     }
   },
   methods: {
@@ -58,9 +65,9 @@ export default {
       task.dueDate = task.origDueDate
       task.editedBody = task.body
     },
-
     formatedDate(date) {
-      return moment(date).format("LLLL")
+      dayjs.extend(LocalizedFormat)
+      return dayjs(date).format("LLL")
     },
     setDueDateHandler(date, task) {
       if (task.origDueDate === undefined) {
@@ -71,11 +78,13 @@ export default {
     setErrorMessage(errorMessage) {
       this.$emit('error', errorMessage)
     },
-    markTaskAsCompleted(task) {
+    toggleTaskCompleted(task) {
       task.completed = !task.completed
       this.updateTask(task)
     },
     taskDeleteHandler(task) {
+      /* mark a task a task as potentially deleted
+      warning message is triggered then user can confirms if task should really be deleted */
       task.selected = false
       task.delete = true
     },
@@ -89,6 +98,7 @@ export default {
     },
 
     newTaskCreatedHandler(data) {
+      // to handle not completed task handler
       this.$emit('refreshTaskBar')
       this.tasks.unshift(data)
     },
@@ -169,6 +179,7 @@ export default {
       })
     },
     handleTouchStart(index) {
+      // Only shows menu for 4sec if user touches the task.
       this.showMenu = true
       this.clearTimeout && clearTimeout(this.clearTimeout)
       this.clearTimeout = setTimeout(() => this.showMenu = false, 4000)
@@ -179,7 +190,6 @@ export default {
       }
       let now = new Date()
       this.touchTimerStart = now.valueOf()
-
     },
     unSetDragTarget() {
       this.tasks = this.tasks.map(t => {
@@ -208,15 +218,18 @@ export default {
     },
     handleTouchMove() {
       this.showMenu = false
+      // If user is moving then set touchTimerStart in the future so
+      // it won't trigger move tasks functionality.
       this.touchTimerStart = new Date().setFullYear(3000)
     },
     handleTouchEnd(index) {
+      /* If user touches a task longer than minduration, then he can moves it. 
+       if shorter simply select the task. */
       let minduration = 500
       let now = new Date()
       let delta = now.valueOf() - this.touchTimerStart
       if (delta >= minduration) this.handleDragStart(index)
       else if (this.tasks[index].isDragTarget !== true) {
-        //        this.tasks[index].selected = !this.tasks[index].selected
         this.tasks[index].selected = true
       } else if (this.tasks[index].isDragTarget === true) {
         this.handleDropOver(index)
@@ -239,9 +252,9 @@ export default {
       ></TaskCreater>
       <TransitionGroup name="list">
         <div
-          class="ui segment attached"
+          class="ui segment attached task-wrapper"
           style="padding-top: 5px; padding-left: 10px; padding-right: 10px; padding-bottom: 5px; border-bottom: none !important;"
-          v-for="(task,index) in tasks"
+          v-for="(task,index) in computedTasks"
           @dragover.prevent
           @dragstart="handleDragStart(index)"
           @drop="handleDropOver(index)"
@@ -255,13 +268,12 @@ export default {
           @touchmove="handleTouchMove()"
           @blur="task.selected = false"
           :style="[task.isDragTarget ? 'border-top: solid' : 'border-top: none !important', 'z-index = -1']"
-          :hidden="task.completed !== showCompleted"
           :key="index"
           :class="[task.selected && 'taskelement-active', index === this.draggedIndex ? 'horizontal-shake' : '', task.selected ? '' : 'secondary']"
           :draggable="task.draggable"
         >
           <div
-            :class="task.completed ? 'completed' : 'notCompleted'"
+            :class="task.completed ? 'completed' : 'not-completed'"
             :data-test-id="'taskHeader-' + index"
             class="ui segment vertically attached fitted taskheader"
             @click.prevent
@@ -290,16 +302,18 @@ export default {
                   tabindex="0"
                   data-test-id="markAsCompletedButton"
                   class="ui icon item"
-                  @mouseup.stop="markTaskAsCompleted(task)"
+                  title="Mark this task as completed."
+                  @mouseup.stop="toggleTaskCompleted(task)"
                   @click.prevent.stop
                   @touchstart.prevent.stop
                   @touchmove.prevent
-                  @touchend.stop="markTaskAsCompleted(task)"
+                  @touchend.stop="toggleTaskCompleted(task)"
                 >
                   <i :class="task.completed ? 'redo icon' : 'calendar check icon'"></i>
                 </a>
                 <a
                   tabindex="0"
+                  title="Delete this task."
                   data-test-id="deleteTaskButton"
                   class="ui icon item"
                   @mouseup.stop="taskDeleteHandler(task)"
@@ -313,18 +327,24 @@ export default {
 
                 <a
                   data-test-id="editTaskButton"
+                  title="Edit this task."
                   class="ui icon item"
-                  @mouseup.stop="task.edit = !task.edit && (task.editedBody = task.body)"
+                  @mouseup.stop="task.edit = !task.edit;
+task.editedBody = task.body
+                  "
                   @click.prevent.stop
                   @touchstart.prevent.stop
                   @touchmove.prevent
-                  @touchend.stop="task.edit = !task.edit && (task.editedBody = task.body)"
+                  @touchend.stop="task.edit = !task.edit;
+task.editedBody = task.body
+                  "
                 >
                   <i class="edit icon"></i>
                 </a>
                 <a
                   tabindex="0"
                   data-test-id="pushTopButton"
+                  title="Push this task to the top."
                   class="ui icon item"
                   @mouseup.stop="pushTaskTop(index)"
                   @click.prevent.stop
@@ -415,7 +435,7 @@ export default {
 .completed {
   background-color: rgb(174, 243, 255);
 }
-.notCompleted {
+.not-completed {
   background-color: rgb(255, 129, 156);
 }
 .icon[class*="right floated"] {
@@ -440,7 +460,7 @@ export default {
 .taskelement-active {
   opacity: 1;
 }
-.list-move, /* apply transition to moving elements */
+.list-move,
 .list-enter-active {
   transition: all 0.6s ease;
 }
@@ -455,18 +475,19 @@ export default {
 .horizontal-shake {
   animation: horizontal-shaking 0.5s infinite;
 }
+
 @keyframes horizontal-shaking {
   0% {
     transform: translateX(0);
   }
   25% {
-    transform: translateX(2px);
+    transform: translateX(1px);
   }
   50% {
-    transform: translateX(-2px);
+    transform: translateX(-1px);
   }
   75% {
-    transform: translateX(2px);
+    transform: translateX(1px);
   }
   100% {
     transform: translateX(0);
