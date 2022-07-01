@@ -410,12 +410,27 @@ export default {
   </FadeTransition>
 </template>
 <style scoped>
+.menu {
+  justify-content: center;
+  flex: auto;
+}
 .taskmenu {
+  justify-content: flex-start;
   min-height: 50px;
   overflow-x: hidden !important;
   overflow-y: hidden !important;
 }
+.flex-wrapper {
+  display: flex;
+  flex: auto;
+  justify-content: center;
+  max-width: min(100%, 960px);
+}
 
+.menu .menu.right,
+.menu .menu.left {
+  flex: 1 0 auto !important;
+}
 .horizontal-shake {
   animation: horizontal-shaking 0.5s infinite;
 }
@@ -425,21 +440,6 @@ export default {
   .collapsable {
     display: none !important;
   }
-}
-.flex-wrapper {
-  display: flex;
-  flex: auto;
-  justify-content: center;
-  max-width: min(100%, 960px);
-}
-.menu {
-  justify-content: center;
-  flex: auto;
-}
-
-.menu .menu.right,
-.menu .menu.left {
-  flex: 1 0 auto !important;
 }
 
 @keyframes horizontal-shaking {
