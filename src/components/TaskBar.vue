@@ -20,12 +20,14 @@ export default {
       auth0User: this.$auth0.user,
       isLoading: this.$auth0.isLoading,
       isAuthenticated: this.$auth0.isAuthenticated,
+
       creatingNewTaskList: false,
       selectedTaskList: "",
       taskListToDelete: "",
       draggedIndex: "",
       newTaskListName: "",
       taskListToRename: "",
+
       touchTimerStart: 0,
       isOverFlown: Boolean,
       scrollInterval: Object
@@ -253,9 +255,9 @@ export default {
 </script>
 
 <template>
-  <div tabindex="-1" class="ui left inverted menu">
+  <div tabindex="-1" class="ui inverted menu">
     <div class="flex-wrapper">
-      <div v-if="isAuthenticated" class="left menu">
+      <div v-if="isAuthenticated" class="ui inverted menu">
         <div class="item collapsable">
           <i class="user icon"></i>
           {{ auth0User.nickname }}
@@ -272,7 +274,7 @@ export default {
           <i class="angle left icon"></i>
         </div>
       </div>
-      <div ref="taskListMenu" v-if="isAuthenticated" class="ui inverted center menu taskmenu">
+      <div ref="taskListMenu" v-if="isAuthenticated" class="ui inverted menu taskmenu">
         <a
           tabindex="0"
           data-test-id="deleteTaskList"
@@ -381,7 +383,7 @@ export default {
           <i v-if="!creatingNewTaskList" class="plus icon"></i>
         </a>
       </div>
-      <div class="ui inverted right menu">
+      <div class="ui inverted menu right">
         <div
           v-if="isAuthenticated && isOverFlown"
           @mousedown="handleMouseDown(handleScrollRight)"
@@ -419,7 +421,7 @@ export default {
 }
 </style>
 <style>
-@media screen and (max-width: 600px) {
+@media screen and (max-width: 768px) {
   .collapsable {
     display: none !important;
   }
@@ -432,10 +434,14 @@ export default {
 }
 .menu {
   justify-content: center;
+  flex: auto;
 }
-.taskmenu {
-  justify-content: flex-start;
+
+.menu .menu.right,
+.menu .menu.left {
+  flex: 1 0 auto !important;
 }
+
 @keyframes horizontal-shaking {
   0% {
     transform: translateX(0);
