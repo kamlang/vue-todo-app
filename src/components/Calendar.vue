@@ -11,7 +11,7 @@
           @mousedown.prevent
           :value="formatedDueDate"
           type="text"
-          placeholder="Due date..."
+          placeholder="Set a reminder..."
           tabindex="-1"
         />
 
@@ -200,7 +200,7 @@ export default {
   margin-right: 1em !important;
 }
 .highlighted {
-  background-color: rgb(252, 73, 112);
+  background-color: var(--teal);
 }
 td.disabled {
   color: #aaa;
