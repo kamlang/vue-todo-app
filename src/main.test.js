@@ -20,15 +20,8 @@ beforeEach(async () => {
     .mockImplementation(() => {
       return {
         data:
-          [{ "name": "taskList1", "tasks": [1] }, { "name": "taskList2", "tasks": [1] }]
+          [{ "name": "taskList1", "tasks": [{ body: "bodyTest1", completed: false, dueDate: null }, { body: "bodyTest2", completed: false, dueDate: null }] }, { "name": "taskList2", "tasks": [{ body: "bodyTest3", completed: false, dueDate: null }] }]
       }
-    })
-  axios.post = vi.fn()
-    .mockImplementationOnce(() => {
-      return { data: [{ body: "bodyTest", completed: false }] }
-    })
-    .mockImplementationOnce(() => {
-      return { data: [] }
     })
 })
 
@@ -55,12 +48,11 @@ describe("", () => {
     expect(axios.get).toHaveBeenCalledOnce()
 
     let taskArray = wrapper.findAll('[data-test-id=taskListName]')
-    expect(taskArray.at(0).text()).toBe("taskList1 (1)")
+    expect(taskArray.at(0).text()).toBe("taskList1 (2)")
     expect(taskArray.at(1).text()).toBe("taskList2 (1)")
-    expect(axios.post).toHaveBeenCalledOnce()
 
     const taskBody = wrapper.get('[data-test-id=taskBody-0]')
-    expect(taskBody.text()).toBe("bodyTest")
+    expect(taskBody.text()).toBe("bodyTest1")
 
     const createTaskButton = wrapper.get('[data-test-id=createNewTaskListButton]')
     await createTaskButton.trigger("click")
@@ -71,10 +63,9 @@ describe("", () => {
     await validateTaskListName.trigger("click")
     await flushPromises()
     expect(axios.put).toHaveBeenCalledOnce()
-    expect(axios.post).toHaveBeenCalledTimes(2)
 
     taskArray = await wrapper.findAll('[data-test-id="taskListName"]')
-    expect(taskArray.at(0).text()).toBe("taskList1 (1)")
+    expect(taskArray.at(0).text()).toBe("taskList1 (2)")
     expect(taskArray.at(1).text()).toBe("taskList2 (1)")
     expect(taskArray.at(2).text()).toBe("taskListTest (0)")
     expect(taskArray.at(2).classes()).toContain('active')
@@ -91,7 +82,7 @@ describe("", () => {
     expect(axios.get).toHaveBeenCalledOnce()
 
     let taskArray = wrapper.findAll('[data-test-id=taskListName]')
-    expect(taskArray.at(0).text()).toBe("taskList1 (1)")
+    expect(taskArray.at(0).text()).toBe("taskList1 (2)")
     expect(taskArray.at(1).text()).toBe("taskList2 (1)")
 
     const deleteButton = wrapper.find("[data-test-id=deleteTaskList]")
@@ -99,7 +90,7 @@ describe("", () => {
     const warnNoButton = wrapper.find("[data-test-id=warnNo]")
     await warnNoButton.trigger("click")
     taskArray = wrapper.findAll('[data-test-id=taskListName]')
-    expect(taskArray.at(0).text()).toBe("taskList1 (1)")
+    expect(taskArray.at(0).text()).toBe("taskList1 (2)")
     expect(taskArray.at(1).text()).toBe("taskList2 (1)")
 
     await deleteButton.trigger("click")
@@ -110,7 +101,7 @@ describe("", () => {
 
     taskArray = wrapper.findAll('[data-test-id=taskListName]')
     expect(taskArray.length).toBe(1)
-    expect(taskArray[0].text()).not.contain("taskList1 (1)")
+    expect(taskArray[0].text()).not.contain("taskList1 (2)")
 
   })
   it("rename task list", async () => {
@@ -128,7 +119,7 @@ describe("", () => {
     expect(axios.get).toHaveBeenCalledOnce()
 
     let taskArray = wrapper.findAll('[data-test-id=taskListName]')
-    expect(taskArray.at(0).text()).toBe("taskList1 (1)")
+    expect(taskArray.at(0).text()).toBe("taskList1 (2)")
     expect(taskArray.at(1).text()).toBe("taskList2 (1)")
 
     await taskArray[0].trigger("dblclick")
@@ -150,7 +141,7 @@ describe("", () => {
 
     taskArray = wrapper.findAll('[data-test-id=taskListName]')
     expect(taskArray.length).toEqual(2)
-    expect(taskArray.at(0).text()).toBe("taskList3 (1)")
+    expect(taskArray.at(0).text()).toBe("taskList3 (2)")
     expect(taskArray.at(1).text()).toBe("taskList2 (1)")
   })
   it("rename and create a task list with already exisiting names.", async () => {
@@ -175,7 +166,7 @@ describe("", () => {
     expect(axios.get).toHaveBeenCalledOnce()
 
     let taskArray = wrapper.findAll('[data-test-id=taskListName]')
-    expect(taskArray.at(0).text()).toBe("taskList1 (1)")
+    expect(taskArray.at(0).text()).toBe("taskList1 (2)")
     expect(taskArray.at(1).text()).toBe("taskList2 (1)")
 
     await taskArray[0].trigger("dblclick")
@@ -195,14 +186,14 @@ describe("", () => {
     expect(wrapper.find('[data-test-id=errorMessage]').exists()).toBe(false)
 
     taskArray = wrapper.findAll('[data-test-id=taskListName]')
-    expect(taskArray.at(0).text()).toBe("taskList1 (1)")
+    expect(taskArray.at(0).text()).toBe("taskList1 (2)")
     expect(taskArray.at(1).text()).toBe("taskList2 (1)")
 
     const createTaskButton = wrapper.get('[data-test-id=createNewTaskListButton]')
     await createTaskButton.trigger("click")
 
     const createTaskInput = wrapper.get('[data-test-id=createNewTaskListInput]')
-    await createTaskInput.setValue("taskList1 (1)")
+    await createTaskInput.setValue("taskList1 (2)")
 
     expect(confirmNewNameButton.exists()).toBe(true)
     await createTaskInput.trigger('keydown.enter')
@@ -214,7 +205,7 @@ describe("", () => {
     expect(wrapper.find('[data-test-id=errorMessage]').exists()).toBe(false)
 
     taskArray = wrapper.findAll('[data-test-id=taskListName]')
-    expect(taskArray.at(0).text()).toBe("taskList1 (1)")
+    expect(taskArray.at(0).text()).toBe("taskList1 (2)")
     expect(taskArray.at(1).text()).toBe("taskList2 (1)")
 
   })
@@ -237,11 +228,11 @@ describe("", () => {
     expect(axios.get).toHaveBeenCalledOnce()
 
     let taskArray = wrapper.findAll('[data-test-id=taskListName]')
-    expect(taskArray.at(0).text()).toBe("taskList1 (1)")
+    expect(taskArray.at(0).text()).toBe("taskList1 (2)")
     expect(taskArray.at(1).text()).toBe("taskList2 (1)")
 
     let taskBody = wrapper.get('[data-test-id=taskBody-0]')
-    expect(taskBody.text()).toBe("bodyTest")
+    expect(taskBody.text()).toBe("bodyTest1")
     await taskBody.trigger('click')
 
     let editTaskButton = wrapper.get('[data-test-id=editTaskButton]')
@@ -260,7 +251,7 @@ describe("", () => {
     await taskBody.trigger('click')
     await editTaskButton.trigger('mouseup')
 
-    expect(editInputBox.text()).toBe("bodyTest")
+    expect(editInputBox.text()).toBe("bodyTest1")
     await editInputBox.setValue('editBodyTest')
     await confirmEditButton.trigger('click')
     await flushPromises()
@@ -273,7 +264,7 @@ describe("", () => {
     await warnYes.trigger('click')
     await flushPromises()
     expect(axios.delete).toHaveBeenCalledOnce()
-    taskBody = wrapper.find('[data-test-id=taskBody-0]')
+    taskBody = wrapper.find('[data-test-id=taskBody-1]')
     expect(taskBody.exists()).toBe(false)
 
   })
@@ -281,19 +272,14 @@ describe("", () => {
   it('testing drag and drop', async () => {
     /* User has two tasks, he takes the last task in the list and
     drag it over the first. Order of tasks should be switched. */
-    axios.post = vi.fn()
-      .mockImplementationOnce(() => {
-        return { data: [{ body: "bodyTest1", completed: false }, { body: "bodyTest2", completed: false }] }
-      })
     const wrapper = mount(App)
 
     await flushPromises()
     expect(axios.get).toHaveBeenCalledOnce()
 
     let taskListArray = wrapper.findAll('[data-test-id=taskListName]')
-    expect(taskListArray.at(0).text()).toBe("taskList1 (1)")
+    expect(taskListArray.at(0).text()).toBe("taskList1 (2)")
     expect(taskListArray.at(1).text()).toBe("taskList2 (1)")
-    expect(axios.post).toHaveBeenCalledOnce()
 
     let firstTaskHeader = wrapper.get('[data-test-id=taskHeader-0]')
     let lastTaskHeader = wrapper.get('[data-test-id=taskHeader-1]')
@@ -334,7 +320,7 @@ describe("", () => {
     expect(secondTask.text()).toBe("bodyTest1")
   })
 
-  it('mark as completed', async () => {
+  it('Mark a task as completed', async () => {
     /* User has two tasks he marks one as completed, so it should be removed.
     Then he clicks on the "toggle show completed" button he should see it there.
     Then he put it back as not completed, task should appear in the "not completed" list again.*/
@@ -370,10 +356,10 @@ describe("", () => {
   })
   it('edit duedate of a task using calendar component', async () => {
     /* A user chooses to edit a task. Then he clicks on the date input field,
- calendar component should shows up. User select a date in the past this should not be taken into account. Then he chooses a date in the future ( delete button should appear, if clicked input should be set back to "") Then he tries to set a time which is not valid.
+ calendar should shows up. User select a date in the past this should not be taken into account. Then he chooses a date in the future (delete button should appear, if clicked due date should be set back to "") Then he tries to set a time which is not valid.
  Time value should be reset to 00:00. Then he sets a valid time.
  Then he clicks cancel button, changes should do not have been updated when user tries to edit the task again.
- Then he presses the editTask button once again and choose a valid date and time and press save. We're checking if the update request include the correct due date.
+ Then he presses the editTask button once again and choose a valid date and time and press save. We're checking if the updateTask api request include the correct due date.
  When trying to edit the task for one more time we should see the correct due date and time in the input fields. */
 
     const date = new Date(2022, 6, 21, 19)
@@ -467,8 +453,11 @@ describe("", () => {
     }
 
     const testCases = ['cancel', 'confirm']
+
     for (let testCase of testCases) await enterDueDate(testCase)
   })
+
 })
 
 // Test Task Creater
+// Test nofication
