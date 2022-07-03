@@ -5,6 +5,7 @@ import FadeTransition from "./components/FadeTransition.vue"
 import TaskList from "./components/TaskList.vue"
 import Loading from "./components/Loading.vue"
 import Unauthenticated from "./components/Unauthenticated.vue"
+import Notification from "./components/Notification.vue"
 
 export default {
   components: {
@@ -12,16 +13,24 @@ export default {
     Error,
     FadeTransition,
     Loading,
+    Notification,
     Unauthenticated,
     TaskList
   },
   data() {
     return {
-      errorMessage: "",
       isLoading: this.$auth0.isLoading,
       isAuthenticated: this.$auth0.isAuthenticated,
-      selectedTaskList: "",
-      refreshTaskBar: false
+      errorMessage: "",
+      selectedTaskList: {},
+      refreshTaskBar: false,
+      tasksToNotify: [],
+      taskToUpdate: {}
+    }
+  },
+  provide() {
+    return {
+      apiUrl: "192.168.1.6:8443"
     }
   },
   methods: {
@@ -33,7 +42,22 @@ export default {
     },
     handleRefreshTaskBar() {
       this.refreshTaskBar = !this.refreshTaskBar
-    }
+    },
+    newNotificationsHandler(taskToNotifyArray) {
+      this.tasksToNotify = taskToNotifyArray
+    },
+    markTaskAsCompletedHandler(task) {
+      task.completed = true
+      this.taskToUpdate = task
+      this.tasksToNotify = this.tasksToNotify.
+        filter(t => t._id !== task._id)
+    },
+    dismissTaskReminderHandler(task) {
+      task.dueDate = ""
+      this.taskToUpdate = task
+      this.tasksToNotify = this.tasksToNotify.
+        filter(t => t._id !== task._id)
+    },
   },
 }
 </script>
@@ -44,9 +68,16 @@ export default {
       :refreshTaskBar="refreshTaskBar"
       @taskListSelected="setSelectedTaskList"
       @error="setErrorMessage"
+      @newNotifications="newNotificationsHandler"
     ></TaskBar>
     <Loading v-if="isLoading"></Loading>
     <Unauthenticated v-if="!isLoading && !isAuthenticated"></Unauthenticated>
+    <Notification
+      @markTaskAsCompleted="markTaskAsCompletedHandler"
+      @dismissTaskReminder="dismissTaskReminderHandler"
+      v-for="task in tasksToNotify"
+      :task="task"
+    ></Notification>
     <FadeTransition>
       <div style="margin-bottom: 16px;" v-if="errorMessage">
         <Error @closed="errorMessage = ''" :errorMessage="errorMessage"></Error>
@@ -57,6 +88,19 @@ export default {
       @error="setErrorMessage"
       v-if="isAuthenticated && !isLoading"
       :selectedTaskList="selectedTaskList"
+      :taskToUpdate="taskToUpdate"
     ></TaskList>
   </div>
 </template>
+<style scoped>
+.main.container {
+  height: 100vh;
+  overflow: auto;
+  background: rgb(27, 28, 29);
+  background: linear-gradient(
+    180deg,
+    rgba(27, 28, 29, 1) 0%,
+    rgba(36, 116, 116, 1) 100%
+  );
+}
+</style>
