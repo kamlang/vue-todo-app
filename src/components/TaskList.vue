@@ -9,6 +9,7 @@ import LocalizedFormat from 'dayjs/plugin/localizedFormat'
 
 export default {
   emits: ['refreshTaskBar', 'error'],
+  inject: ['apiUrl'],
   components: {
     TaskCreater,
     Calendar,
@@ -18,44 +19,38 @@ export default {
   data() {
     return {
       tasks: [],
-      showCompleted: false,
-      draggedIndex: "",
+      showCompletedTasks: false,
+      draggedTaskIndex: "",
       touchTimerStart: 0,
-      showMenu: true,
-      clearTimeout: Object
+      showTaskMenu: true,
+
+      clearTouchTimeout: Object
     }
   },
   props: {
-    selectedTaskList: String
+    selectedTaskList: Object,
+    taskToUpdate: Object,
   },
   watch: {
-    async selectedTaskList() {
-      this.tasks = []
-      if (this.selectedTaskList) {
-        try {
-          const accessToken = await this.$auth0.getAccessTokenSilently();
-          const response = await axios.post("https://api-todo.glgmsh.com/getTasks",
-            {
-              name: this.selectedTaskList
-            },
-            {
-              headers: {
-                "Authorization": `Bearer ${accessToken}`,
-                "Content-type": "application/json; charset=UTF-8"
-              },
-            })
-          this.tasks = await response.data
-          this.newTask = ""
-          this.showCompleted = false
-        } catch (e) {
-          console.log(e)
+    selectedTaskList() {
+      if (this.selectedTaskList.name) {
+        this.tasks = this.selectedTaskList.tasks
+      }
+    },
+    taskToUpdate() {
+      this.updateTask(this.taskToUpdate)
+      for (let task of this.tasks) {
+        if (this.taskToUpdate._id === task._id) {
+          task.dueDate = this.taskToUpdate.dueDate
+          task.completed = this.taskToUpdate.completed
+          break
         }
       }
     }
   },
   computed: {
     computedTasks() {
-      return this.tasks.filter(task => task.completed === this.showCompleted)
+      return this.tasks.filter(task => task.completed === this.showCompletedTasks)
     }
   },
   methods: {
@@ -105,9 +100,9 @@ export default {
     async updateTaskOrder() {
       try {
         const accessToken = await this.$auth0.getAccessTokenSilently();
-        await axios.patch("https://api-todo.glgmsh.com/updateTaskOrder",
+        await axios.patch("https://" + this.apiUrl + "/updateTaskOrder",
           {
-            name: this.selectedTaskList,
+            name: this.selectedTaskList.name,
             tasks: this.tasks.map(task => task._id)
           },
           {
@@ -123,7 +118,7 @@ export default {
     async deleteTask(task) {
       try {
         const accessToken = await this.$auth0.getAccessTokenSilently();
-        await axios.delete("https://api-todo.glgmsh.com/deleteTask", {
+        await axios.delete("https://" + this.apiUrl + "/deleteTask", {
           data: {
             _id: task._id
           },
@@ -144,7 +139,7 @@ export default {
       }
       try {
         const accessToken = await this.$auth0.getAccessTokenSilently();
-        await axios.patch("https://api-todo.glgmsh.com/updateTask",
+        await axios.patch("https://" + this.apiUrl + "/updateTask",
           {
             _id: task._id,
             title: task.title,
@@ -170,7 +165,7 @@ export default {
       this.tasks[index].isDragTarget = true
     },
     handleDragStart(index) {
-      this.draggedIndex = index
+      this.draggedTaskIndex = index
     },
     unSetAllButSelected(index) {
       this.tasks = this.tasks.map((t, i) => {
@@ -180,12 +175,12 @@ export default {
     },
     handleTouchStart(index) {
       // Only shows menu for 4sec if user touches the task.
-      this.showMenu = true
-      this.clearTimeout && clearTimeout(this.clearTimeout)
-      this.clearTimeout = setTimeout(() => this.showMenu = false, 4000)
+      this.showTaskMenu = true
+      this.clearTouchTimeout && clearTouchTimeout(this.clearTouchTimeout)
+      this.clearTouchTimeout = setTimeout(() => this.showTaskMenu = false, 4000)
 
       this.unSetAllButSelected(index)
-      if (this.draggedIndex !== '') {
+      if (this.draggedTaskIndex !== '') {
         this.handleDragEnter(index)
       }
       let now = new Date()
@@ -198,13 +193,13 @@ export default {
       })
     },
     handleDropOver(index) {
-      if (this.draggedIndex === '') {
+      if (this.draggedTaskIndex === '') {
         this.unSetDragTarget()
         return
       }
-      if (this.draggedIndex < index) index += 1
-      if (this.draggedIndex != index) {
-        let taskToInsert = this.tasks[this.draggedIndex]
+      if (this.draggedTaskIndex < index) index += 1
+      if (this.draggedTaskIndex != index) {
+        let taskToInsert = this.tasks[this.draggedTaskIndex]
         let arr1 = this.tasks.slice(0, index).filter(task => task !== taskToInsert)
         arr1.push(taskToInsert)
         let arr2 = this.tasks.slice(index,).filter(task => task !== taskToInsert)
@@ -214,10 +209,10 @@ export default {
     },
     handleDragEnd() {
       this.unSetDragTarget()
-      this.draggedIndex = ""
+      this.draggedTaskIndex = ""
     },
     handleTouchMove() {
-      this.showMenu = false
+      this.showTaskMenu = false
       // If user is moving then set touchTimerStart in the future so
       // it won't trigger move tasks functionality.
       this.touchTimerStart = new Date().setFullYear(3000)
@@ -242,18 +237,18 @@ export default {
 </script>
 
 <template>
-  <div v-if="selectedTaskList" class="ui text container">
-    <div class="ui segments">
+  <div v-if="selectedTaskList.name" class="ui text container">
+    <div class="ui segments" style="border:none">
       <TaskCreater
-        :selectedTaskList="selectedTaskList"
+        :selectedTaskList="selectedTaskList.name"
         @error="setErrorMessage"
         @newTaskCreated="newTaskCreatedHandler"
-        @toggleShowCompleted="showCompleted = !showCompleted"
+        @toggleShowCompleted="showCompletedTasks = !showCompletedTasks"
       ></TaskCreater>
       <TransitionGroup name="list">
         <div
           class="ui segment attached task-wrapper"
-          style="padding-top: 5px; padding-left: 10px; padding-right: 10px; padding-bottom: 5px; border-bottom: none !important;"
+          style="padding-top: 5px; padding-left: 10px; padding-right: 10px; padding-bottom: 5px; border: none !important;margin:0"
           v-for="(task,index) in computedTasks"
           @dragover.prevent
           @dragstart="handleDragStart(index)"
@@ -269,7 +264,7 @@ export default {
           @blur="task.selected = false"
           :style="[task.isDragTarget ? 'border-top: solid' : 'border-top: none !important', 'z-index = -1']"
           :key="index"
-          :class="[task.selected && 'taskelement-active', index === this.draggedIndex ? 'horizontal-shake' : '', task.selected ? '' : 'secondary']"
+          :class="[task.selected && 'taskelement-active', index === this.draggedTaskIndex ? 'horizontal-shake' : '', task.selected ? '' : 'secondary']"
           :draggable="task.draggable"
         >
           <div
@@ -295,7 +290,7 @@ export default {
               <div
                 class="ui right floated borderless menu"
                 style="border: 0px !important"
-                v-if="task.selected && !task.edit && !task.delete && showMenu"
+                v-if="task.selected && !task.edit && !task.delete && showTaskMenu"
                 z-index="100"
               >
                 <a
@@ -430,13 +425,21 @@ task.editedBody = task.body
     </div>
   </div>
 </template>
-
+<style>
+:root {
+  --teal: #e1f7f7;
+  --green-completed: #e5f9e7;
+}
+</style>
 <style scoped>
+.task-wrapper {
+  max-width: 700px !important;
+}
 .completed {
-  background-color: rgb(174, 243, 255);
+  background-color: var(--green-completed);
 }
 .not-completed {
-  background-color: rgb(255, 129, 156);
+  background-color: var(--teal);
 }
 .icon[class*="right floated"] {
   float: right !important;
@@ -449,7 +452,8 @@ task.editedBody = task.body
   margin-right: 1em !important;
 }
 .taskheader {
-  border-radius: 0px 0px 0px 0px !important;
+  font-style: italic;
+  border-radius: 5px 5px 0px 0px !important;
 }
 .taskelement {
   min-height: 70px !important;

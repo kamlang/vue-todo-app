@@ -5,6 +5,7 @@ import axios from "axios"
 import FadeTransition from "./FadeTransition.vue"
 export default {
   emits: ['toggleShowCompleted', 'newTaskCreated', 'error'],
+  inject: ['apiUrl'],
   components: {
     Calendar,
     FadeTransition
@@ -15,7 +16,7 @@ export default {
       newTaskBody: "",
       newTaskTitle: "",
       newTaskDueDate: "",
-      showCompleted: false,
+      showCompletedTasks: false,
       showTaskForm: false,
     }
   },
@@ -33,7 +34,8 @@ export default {
   },
   methods: {
     toggleShowCompleted() {
-      this.$emit('toggleShowCompleted', this.showCompleted)
+      this.showCompletedTasks = !this.showCompletedTasks
+      this.$emit('toggleShowCompleted', this.showCompletedTasks)
     },
     setDueDateHandler(date) {
       this.newTaskDueDate = date
@@ -41,7 +43,7 @@ export default {
     async addTask() {
       try {
         const accessToken = await this.$auth0.getAccessTokenSilently();
-        const response = await axios.put("https://api-todo.glgmsh.com/addTask",
+        const response = await axios.put("https://" + this.apiUrl + "/addTask",
           {
             name: this.selectedTaskList,
             title: this.newTaskTitle,
@@ -77,9 +79,9 @@ export default {
     title="Create a new task."
   >
     <div
-      :title="showCompleted ? 'Hide completed tasks' : 'Show completed tasks'"
+      :title="showCompletedTasks ? 'Hide completed tasks.' : 'Show completed tasks.'"
       data-test-id="toggle-show-completed"
-      @keydown.space.stop="showCompleted = !showCompleted"
+      @keydown.space.stop="toggleShowCompleted"
       class="ui toggle checkbox right floated"
       @click.stop="toggleShowCompleted"
     >

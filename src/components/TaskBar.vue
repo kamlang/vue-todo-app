@@ -5,14 +5,16 @@ import FadeTransition from './FadeTransition.vue'
 import Authentication from './Authentication.vue'
 
 export default {
-  emits: ['taskListSelected', 'error'],
+  emits: ['taskListSelected', 'error', 'newNotifications'],
+  inject: ['apiUrl'],
   components: {
     FadeTransition,
     Authentication,
     Warning
   },
   props: {
-    refreshTaskBar: Boolean
+    refreshTaskBar: Boolean,
+    taskToUpdate: Object
   },
   data() {
     return {
@@ -24,7 +26,7 @@ export default {
       creatingNewTaskList: false,
       selectedTaskList: "",
       taskListToDelete: "",
-      draggedIndex: "",
+      draggedTaskListIndex: "",
       newTaskListName: "",
       taskListToRename: "",
 
@@ -53,14 +55,39 @@ export default {
   destroyed() {
     window.removeEventListener("resize", this.handleResize);
   },
+  mounted() {
+    setInterval(() => this.checkTaskDueDate(), 5000)
+  },
   methods: {
+    checkTaskDueDate() {
+      if (!this.taskListArray) return
+      let taskToNotifyArray = []
+      for (let taskList of this.taskListArray) {
+        for (let task of taskList.tasks) {
+          if (task.dueDate !== null && task.completed === false) {
+            const taskDueDate = new Date(task.dueDate)
+            if (taskDueDate < Date.now()) {
+              task.taskListName = taskList.name
+              taskToNotifyArray.push(task)
+            }
+          }
+        }
+      }
+      this.$emit('newNotifications', taskToNotifyArray)
+    },
     isOverFlownMenu() {
       return this.$refs.taskListMenu.scrollWidth > this.$refs.taskListMenu.clientWidth
     },
-    setSelectedTaskList(taskList) {
-      this.selectedTaskList = taskList
+    setSelectedTaskList(taskListName) {
+      this.selectedTaskList = taskListName
       this.creatingNewTaskList = false
-      this.$emit('taskListSelected', taskList)
+
+      for (let taskList of this.taskListArray) {
+        if (taskList.name === taskListName) {
+          this.$emit('taskListSelected', taskList)
+          break
+        }
+      }
       this.$emit('error', '')
     },
     async newTaskListHandler() {
@@ -85,20 +112,20 @@ export default {
       })
     },
     handleDragStart(index) {
-      this.draggedIndex = index
+      this.draggedTaskListIndex = index
     },
     handleDragEnter(index) {
       this.taskListArray[index].isDragTarget = true
     },
     handleDropOver(index) {
 
-      if (this.draggedIndex === '') {
+      if (this.draggedTaskListIndex === '') {
         this.unSetDragTarget()
         return
       }
-      if (this.draggedIndex < index) index += 1
-      if (this.draggedIndex != index) {
-        let taskListToInsert = this.taskListArray[this.draggedIndex]
+      if (this.draggedTaskListIndex < index) index += 1
+      if (this.draggedTaskListIndex != index) {
+        let taskListToInsert = this.taskListArray[this.draggedTaskListIndex]
         let arr1 = this.taskListArray.slice(0, index).filter(taskList => taskList !== taskListToInsert)
         arr1.push(taskListToInsert)
         let arr2 = this.taskListArray.slice(index,).filter(taskList => taskList !== taskListToInsert)
@@ -109,10 +136,10 @@ export default {
     },
     handleDragEnd() {
       this.unSetDragTarget()
-      this.draggedIndex = ""
+      this.draggedTaskListIndex = ""
     },
     handleTouchStart(index, taskListName) {
-      if (this.draggedIndex !== "") {
+      if (this.draggedTaskListIndex !== "") {
         this.handleDropOver(index)
         this.handleDragEnd()
       } else {
@@ -132,7 +159,7 @@ export default {
     async updateTaskListOrder() {
       try {
         const accessToken = await this.$auth0.getAccessTokenSilently();
-        await axios.patch("https://api-todo.glgmsh.com/updateTaskListOrder",
+        await axios.patch("https://" + this.apiUrl + "/updateTaskListOrder",
           {
             taskLists: this.taskListArray.map(taskList => taskList._id)
           },
@@ -150,7 +177,7 @@ export default {
 
       try {
         const accessToken = await this.$auth0.getAccessTokenSilently();
-        const response = await axios.put("https://api-todo.glgmsh.com/createTaskList",
+        const response = await axios.put("https://" + this.apiUrl + "/createTaskList",
           {
             name: this.newTaskListName
           },
@@ -173,7 +200,7 @@ export default {
     async updateTaskList() {
       try {
         const accessToken = await this.$auth0.getAccessTokenSilently();
-        const response = await axios.patch("https://api-todo.glgmsh.com/updateTaskList",
+        const response = await axios.patch("https://" + this.apiUrl + "/updateTaskList",
           {
             name: this.selectedTaskList,
             newName: this.newTaskListName
@@ -202,7 +229,7 @@ export default {
     async deleteTaskList(taskList) {
       try {
         const accessToken = await this.$auth0.getAccessTokenSilently();
-        await axios.delete("https://api-todo.glgmsh.com/deleteTaskList", {
+        await axios.delete("https://" + this.apiUrl + "/deleteTaskList", {
           data: {
             name: taskList
           },
@@ -222,7 +249,7 @@ export default {
     async getTaskList() {
       try {
         const accessToken = await this.$auth0.getAccessTokenSilently();
-        const response = await axios.get("https://api-todo.glgmsh.com/getTaskList", {
+        const response = await axios.get("https://" + this.apiUrl + "/getTaskList", {
           headers: {
             "Authorization": `Bearer ${accessToken}`,
             "Content-type": "application/json; charset=UTF-8"
@@ -304,7 +331,7 @@ export default {
           @dragexit="taskList.isDragTarget = false"
           @touchstart.prevent.stop="handleTouchStart(index, taskList.name)"
           @touchend="handleTouchEnd(index)"
-          :class="[selectedTaskList == taskList.name && 'active', draggedIndex === index ? 'horizontal-shake' : '']"
+          :class="[selectedTaskList == taskList.name && 'active', draggedTaskListIndex === index ? 'horizontal-shake' : '']"
           :style="[taskList.isDragTarget ? 'border-left: 2px solid' : 'border-left: 1px']"
           tabindex="0"
           draggable="true"
