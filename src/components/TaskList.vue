@@ -176,7 +176,7 @@ export default {
     handleTouchStart(index) {
       // Only shows menu for 4sec if user touches the task.
       this.showTaskMenu = true
-      this.clearTouchTimeout && clearTouchTimeout(this.clearTouchTimeout)
+      this.clearTouchTimeout && clearTimeout(this.clearTouchTimeout)
       this.clearTouchTimeout = setTimeout(() => this.showTaskMenu = false, 4000)
 
       this.unSetAllButSelected(index)
@@ -213,8 +213,7 @@ export default {
     },
     handleTouchMove() {
       this.showTaskMenu = false
-      // If user is moving then set touchTimerStart in the future so
-      // it won't trigger move tasks functionality.
+      // If toucheMove event is fired then touchTimerStart is set in the future so it won't trigger move tasks functionality.
       this.touchTimerStart = new Date().setFullYear(3000)
     },
     handleTouchEnd(index) {
@@ -238,7 +237,7 @@ export default {
 
 <template>
   <div v-if="selectedTaskList.name" class="ui text container">
-    <div class="ui segments" style="border:none">
+    <div class="ui segments">
       <TaskCreater
         :selectedTaskList="selectedTaskList.name"
         @error="setErrorMessage"
@@ -248,24 +247,24 @@ export default {
       <TransitionGroup name="list">
         <div
           class="ui segment attached task-wrapper"
-          style="padding-top: 5px; padding-left: 10px; padding-right: 10px; padding-bottom: 5px; border: none !important;margin:0"
           v-for="(task,index) in computedTasks"
           @dragover.prevent
+          @keydown.enter="task.selected = !task.selected"
           @dragstart="handleDragStart(index)"
           @drop="handleDropOver(index)"
           @dragenter="handleDragEnter(index)"
           @dragend="handleDragEnd"
-          @dragexit="task.isDragTarget = false"
-          @mouseleave="task.selected = false"
           @click="task.selected = true"
+          @mouseleave="task.selected = false"
+          @dragexit="task.isDragTarget = false"
           @touchstart="handleTouchStart(index)"
           @touchend.prevent="handleTouchEnd(index)"
           @touchmove="handleTouchMove()"
-          @blur="task.selected = false"
           :style="[task.isDragTarget ? 'border-top: solid' : 'border-top: none !important', 'z-index = -1']"
           :key="index"
           :class="[task.selected && 'taskelement-active', index === this.draggedTaskIndex ? 'horizontal-shake' : '', task.selected ? '' : 'secondary']"
           :draggable="task.draggable"
+          tabindex="0"
         >
           <div
             :class="task.completed ? 'completed' : 'not-completed'"
@@ -299,6 +298,7 @@ export default {
                   class="ui icon item"
                   title="Mark this task as completed."
                   @mouseup.stop="toggleTaskCompleted(task)"
+                  @keydown.enter="toggleTaskCompleted(task)"
                   @click.prevent.stop
                   @touchstart.prevent.stop
                   @touchmove.prevent
@@ -312,6 +312,7 @@ export default {
                   data-test-id="deleteTaskButton"
                   class="ui icon item"
                   @mouseup.stop="taskDeleteHandler(task)"
+                  @keydown.enter="taskDeleteHandler(task)"
                   @click.prevent.stop
                   @touchstart.prevent.stop
                   @touchmove.prevent
@@ -321,18 +322,19 @@ export default {
                 </a>
 
                 <a
+                  tabindex="0"
                   data-test-id="editTaskButton"
                   title="Edit this task."
                   class="ui icon item"
                   @mouseup.stop="task.edit = !task.edit;
-task.editedBody = task.body
-                  "
+                  task.editedBody = task.body"
+                  @keydown.enter="task.edit = !task.edit;
+                  task.editedBody = task.body"
                   @click.prevent.stop
                   @touchstart.prevent.stop
                   @touchmove.prevent
                   @touchend.stop="task.edit = !task.edit;
-task.editedBody = task.body
-                  "
+                  task.editedBody = task.body"
                 >
                   <i class="edit icon"></i>
                 </a>
@@ -342,6 +344,7 @@ task.editedBody = task.body
                   title="Push this task to the top."
                   class="ui icon item"
                   @mouseup.stop="pushTaskTop(index)"
+                  @keydown.enter="pushTaskTop(index)"
                   @click.prevent.stop
                   @touchstart.prevent.stop
                   @touchmove.prevent
@@ -432,9 +435,28 @@ task.editedBody = task.body
 }
 </style>
 <style scoped>
-.task-wrapper {
-  max-width: 700px !important;
+.ui.segments {
+  display: flex;
+  flex-direction: column;
+  border: none;
+  gap: 15px;
 }
+
+.task-wrapper {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  max-width: 700px !important;
+  background-color: rgb(0, 0, 0, 0) !important;
+  border: none !important;
+}
+
+.task-wrapper .segment {
+  flex: auto;
+  margin: 0;
+  width: 100% !important;
+}
+
 .completed {
   background-color: var(--green-completed);
 }
@@ -477,7 +499,7 @@ task.editedBody = task.body
   transform: translateY(60px);
 }
 .horizontal-shake {
-  animation: horizontal-shaking 0.5s infinite;
+  animation: horizontal-shaking 0.7s infinite;
 }
 
 @keyframes horizontal-shaking {
