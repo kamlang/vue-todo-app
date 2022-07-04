@@ -100,6 +100,9 @@ export default {
     active() {
       if (!this.active) this.showCalendar = false
     },
+    injectedDueDate() {
+      this.injectedDueDate === "" && (this.time = "00:00")
+    }
   },
   props: {
     injectedDueDate: String,
