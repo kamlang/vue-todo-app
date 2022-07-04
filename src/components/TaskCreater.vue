@@ -74,9 +74,10 @@ export default {
   <div
     class="ui segment"
     tabindex="0"
-    @keydown.space.prevent="showTaskForm = !showTaskForm"
+    @keydown.space="showTaskForm = !showTaskForm"
+    @keydown.enter="showTaskForm = !showTaskForm"
     @click="showTaskForm = !showTaskForm"
-    title="Create a new task."
+    :title="showTaskForm ? 'Hide new task panel.' : 'Show new task panel.'"
   >
     <div
       :title="showCompletedTasks ? 'Hide completed tasks.' : 'Show completed tasks.'"
@@ -121,6 +122,9 @@ export default {
 </template>
 
 <style scoped>
+.segment {
+  border-radius: 5px !important;
+}
 .checkbox[class*="right floated"] {
   float: right !important;
   margin-right: 0em !important;
