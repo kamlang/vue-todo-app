@@ -41,6 +41,7 @@ export default {
         if (this.isAuthenticated) {
           await this.getTaskList()
           this.isOverFlown = this.isOverFlownMenu()
+          this.checkTaskDueDate()
         }
       },
       immediate: true
@@ -56,7 +57,7 @@ export default {
     window.removeEventListener("resize", this.handleResize);
   },
   mounted() {
-    setInterval(() => this.checkTaskDueDate(), 5000)
+    setInterval(() => this.checkTaskDueDate(), 50000)
   },
   methods: {
     checkTaskDueDate() {
@@ -96,6 +97,8 @@ export default {
       this.creatingNewTaskList = !this.creatingNewTaskList
       await this.$nextTick()
       this.$refs.newTaskNameInput.focus()
+      // scroll max right when creating a new task list so input box is fully visible.
+      this.handleScrollRight(1000)
     },
     async renameTaskListHandler(taskList) {
       this.newTaskListName = ""
@@ -267,15 +270,19 @@ export default {
     handleMouseUp() {
       clearInterval(this.scrollInterval)
     },
-    handleScrollLeft() {
-      this.$refs.taskListMenu.scrollLeft -= 10
+    handleScrollLeft(step = 10) {
+      this.$refs.taskListMenu.scrollLeft -= step
     },
-    handleScrollRight() {
-      this.$refs.taskListMenu.scrollLeft += 10
+    handleScrollRight(step = 10) {
+      this.$refs.taskListMenu.scrollLeft += step
     },
     handleResize() {
       this.isOverFlown = this.isOverFlownMenu()
     },
+    handleWheel(event) {
+      event.deltaY < 0 ? this.handleScrollLeft(50) :
+        this.handleScrollRight(50)
+    }
   }
 }
 
@@ -301,7 +308,13 @@ export default {
           <i class="angle left icon"></i>
         </div>
       </div>
-      <div ref="taskListMenu" v-if="isAuthenticated" class="ui inverted menu taskmenu">
+      <div
+        ref="taskListMenu"
+        v-if="isAuthenticated"
+        class="ui inverted menu taskmenu"
+        @wheel.prevent.stop="(event) => handleWheel(event)"
+        @scroll.prevent.stop
+      >
         <a
           tabindex="0"
           data-test-id="deleteTaskList"
