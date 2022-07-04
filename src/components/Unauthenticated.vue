@@ -3,7 +3,7 @@
     <div class="ui center aligned message">
       <div class="content">
         <div class="header">You must be logged in !</div>
-        <p>You can login or sign-up using the top right corner button.</p>
+        <p>You can login or sign-up using the button above.</p>
       </div>
     </div>
   </FadeTransition>
