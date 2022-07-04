@@ -9,9 +9,9 @@ export default {
 
 <template>
   <div class="ui fluid container small icon teal message">
-    <i class="tasks icon"></i>
     <div class="ui container">
       <div class="flex-container content">
+        <i class="tasks icon"></i>
         <b>{{ task.taskListName }}:</b>
         <br />
         <q>
@@ -49,6 +49,7 @@ export default {
 }
 .ui.container {
   display: flex;
+  flex-flow: row;
   flex: auto;
   gap: 1rem;
 }
@@ -56,5 +57,14 @@ export default {
   max-width: 700px;
   margin-left: auto;
   margin-right: auto;
+}
+
+@media screen and (max-width: 600px) {
+  .ui.container {
+    flex-flow: row wrap;
+  }
+  .flex-container.buttons {
+    justify-content: center;
+  }
 }
 </style>
