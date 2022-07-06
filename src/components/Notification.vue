@@ -10,7 +10,7 @@ export default {
 <template>
   <div class="ui fluid container small icon teal message">
     <div class="ui container">
-      <div class="flex-container content">
+      <div data-test-id="notification-container" class="flex-container content">
         <i class="tasks icon"></i>
         <b>{{ task.taskListName }}:</b>
         <br />
@@ -20,6 +20,7 @@ export default {
       </div>
       <div class="flex-container buttons">
         <div
+          data-test-id="notification-markascompleted"
           tabindex="0"
           class="ui right floated button"
           @keydown.enter="$emit('markTaskAsCompleted', task)"
@@ -27,6 +28,7 @@ export default {
           @touchstart.prevent="$emit('markTaskAsCompleted', task)"
         >Mark as completed</div>
         <div
+          data-test-id="notification-dismiss"
           tabindex="0"
           class="ui right floated button"
           @keydown.enter="$emit('dismissTaskReminder', task)"
@@ -54,7 +56,7 @@ export default {
   gap: 1rem;
 }
 .message {
-  max-width: 700px;
+  width: 700px;
   margin-left: auto;
   margin-right: auto;
 }
