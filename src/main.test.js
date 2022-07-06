@@ -456,8 +456,65 @@ describe("", () => {
 
     for (let testCase of testCases) await enterDueDate(testCase)
   })
+  it('Testing notification clicking mark as complete', async () => {
+    /* In taskList1 a user has a task with an anterior duedate, notifictation should be triggerd then he clicks marked as completed and task should be marked as completed and should not be visible anymore.
+    */
+    const date = new Date(Date.now() - 10000).toString()
+    axios.get = vi.fn()
+      .mockImplementation(() => {
+        return {
+          data:
+            [{ "name": "taskList1", "tasks": [{ body: "bodyTest1", completed: false, dueDate: date }, { body: "bodyTest2", completed: false, dueDate: null }] }, { "name": "taskList2", "tasks": [{ body: "bodyTest3", completed: false, dueDate: null }] }]
+        }
+      })
+    const wrapper = mount(App)
+    await flushPromises()
 
+    let firstTask = wrapper.find('[data-test-id=taskBody-0]')
+    let secondTask = wrapper.get('[data-test-id=taskBody-1]')
+    expect(firstTask.text()).toBe("bodyTest1")
+    expect(secondTask.text()).toBe("bodyTest2")
+
+    const notificationElement = wrapper.get('[data-test-id=notification-container]')
+    expect(notificationElement.text()).toContain("bodyTest1")
+
+  })
+
+  it('Testing notification clicking dismiss', async () => {
+    const date = new Date(Date.now() - 10000).toString()
+    axios.get = vi.fn()
+      .mockImplementation(() => {
+        return {
+          data:
+            [{ "name": "taskList1", "tasks": [{ body: "bodyTest1", completed: false, dueDate: date }, { body: "bodyTest2", completed: false, dueDate: null }] }, { "name": "taskList2", "tasks": [{ body: "bodyTest3", completed: false, dueDate: null }] }]
+        }
+      })
+    const wrapper = mount(App)
+    await flushPromises()
+
+    let firstTask = wrapper.find('[data-test-id=taskBody-0]')
+    let secondTask = wrapper.get('[data-test-id=taskBody-1]')
+    expect(firstTask.text()).toBe("bodyTest1")
+    expect(secondTask.text()).toBe("bodyTest2")
+
+    const notificationElement = wrapper.get('[data-test-id=notification-container]')
+    expect(notificationElement.text()).toContain("bodyTest1")
+
+    let dismissButton = wrapper.get('[data-test-id=notification-dismiss]')
+    await dismissButton.trigger('click')
+    await firstTask.trigger('click')
+    let editTaskButton = wrapper.get('[data-test-id=editTaskButton]')
+    await editTaskButton.trigger('mouseup')
+
+    let inputDate = wrapper.get('[data-test-id=input-duedate]')
+    let inputTime = wrapper.get('[data-test-id=input-time]')
+
+    expect(inputDate.text()).toEqual("")
+    expect(inputTime.text()).toEqual("")
+
+  })
 })
 
 // Test Task Creater
+// test touch
 // Test nofication
