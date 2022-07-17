@@ -519,4 +519,9 @@ export default {
     transform: translateX(0);
   }
 }
+@media screen and (max-width: 600px) {
+  .ui.text.container {
+    margin: 0 !important;
+  }
+}
 </style>
