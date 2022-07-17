@@ -31,10 +31,3 @@ export default {
     </div>
   </div>
 </template>
-<style scoped>
-.warning.message {
-  max-width: 700px;
-  margin-left: auto;
-  margin-right: auto;
-}
-</style>

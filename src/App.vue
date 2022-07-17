@@ -70,27 +70,29 @@ export default {
       @error="setErrorMessage"
       @newNotifications="newNotificationsHandler"
     ></TaskBar>
-    <Loading v-if="isLoading"></Loading>
-    <Unauthenticated v-if="!isLoading && !isAuthenticated"></Unauthenticated>
-    <Notification
-      v-if="isAuthenticated && !isLoading"
-      @markTaskAsCompleted="markTaskAsCompletedHandler"
-      @dismissTaskReminder="dismissTaskReminderHandler"
-      v-for="task in tasksToNotify"
-      :task="task"
-    ></Notification>
-    <FadeTransition>
-      <div style="margin-bottom: 16px;" v-if="errorMessage">
-        <Error @closed="errorMessage = ''" :errorMessage="errorMessage"></Error>
-      </div>
-    </FadeTransition>
-    <TaskList
-      @refreshTaskBar="handleRefreshTaskBar"
-      @error="setErrorMessage"
-      v-if="isAuthenticated && !isLoading"
-      :selectedTaskList="selectedTaskList"
-      :taskToUpdate="taskToUpdate"
-    ></TaskList>
+    <div class="wrapper">
+      <Loading v-if="isLoading"></Loading>
+      <Unauthenticated v-if="!isLoading && !isAuthenticated"></Unauthenticated>
+      <Notification
+        v-if="isAuthenticated && !isLoading"
+        @markTaskAsCompleted="markTaskAsCompletedHandler"
+        @dismissTaskReminder="dismissTaskReminderHandler"
+        v-for="task in tasksToNotify"
+        :task="task"
+      ></Notification>
+      <FadeTransition>
+        <div style="margin-bottom: 16px;" v-if="errorMessage">
+          <Error @closed="errorMessage = ''" :errorMessage="errorMessage"></Error>
+        </div>
+      </FadeTransition>
+      <TaskList
+        @refreshTaskBar="handleRefreshTaskBar"
+        @error="setErrorMessage"
+        v-if="isAuthenticated && !isLoading"
+        :selectedTaskList="selectedTaskList"
+        :taskToUpdate="taskToUpdate"
+      ></TaskList>
+    </div>
   </div>
 </template>
 <style scoped>
@@ -103,5 +105,16 @@ export default {
     rgba(27, 28, 29, 1) 0%,
     rgba(36, 116, 116, 1) 100%
   );
+}
+.wrapper {
+  max-width: min(95%, 960px);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+@media screen and (max-width: 700px) {
+  .wrapper {
+    max-width: 100%;
+  }
 }
 </style>

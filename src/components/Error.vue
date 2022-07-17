@@ -14,11 +14,3 @@ export default {
   },
 }
 </script>
-
-<style scoped>
-.negative.message {
-  max-width: 700px;
-  margin-left: auto;
-  margin-right: auto;
-}
-</style>

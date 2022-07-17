@@ -17,10 +17,3 @@ export default {
   },
 }
 </script>
-<style scoped>
-.message {
-  max-width: 700px;
-  margin-left: auto;
-  margin-right: auto;
-}
-</style>

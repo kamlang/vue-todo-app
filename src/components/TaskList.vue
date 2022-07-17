@@ -236,7 +236,7 @@ export default {
 </script>
 
 <template>
-  <div v-if="selectedTaskList.name" class="ui text container">
+  <div v-if="selectedTaskList.name" class="ui fluid container">
     <div class="ui segments">
       <TaskCreater
         :selectedTaskList="selectedTaskList.name"
@@ -446,7 +446,6 @@ export default {
   display: flex;
   flex-direction: column;
   padding: 0;
-  max-width: 700px !important;
   background-color: rgb(0, 0, 0, 0) !important;
   border: none !important;
 }
