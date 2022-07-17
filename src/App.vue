@@ -73,6 +73,7 @@ export default {
     <Loading v-if="isLoading"></Loading>
     <Unauthenticated v-if="!isLoading && !isAuthenticated"></Unauthenticated>
     <Notification
+      v-if="isAuthenticated && !isLoading"
       @markTaskAsCompleted="markTaskAsCompletedHandler"
       @dismissTaskReminder="dismissTaskReminderHandler"
       v-for="task in tasksToNotify"
