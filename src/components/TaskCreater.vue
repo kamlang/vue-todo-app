@@ -3,6 +3,7 @@
 import Calendar from "./Calendar.vue"
 import axios from "axios"
 import FadeTransition from "./FadeTransition.vue"
+
 export default {
   emits: ['toggleShowCompleted', 'newTaskCreated', 'error'],
   inject: ['apiUrl'],
@@ -73,6 +74,7 @@ export default {
 <template>
   <div
     class="ui segment"
+    data-test-id="task-creater"
     tabindex="0"
     @keydown.space="showTaskForm = !showTaskForm"
     @keydown.enter="showTaskForm = !showTaskForm"
@@ -97,15 +99,25 @@ export default {
     <div v-if="showTaskForm" class="ui clearing segment">
       <form class="ui form">
         <div class="field">
-          <input v-model="newTaskTitle" placeholder="Give a title to this task..." />
+          <input
+            data-test-id="task-title"
+            v-model="newTaskTitle"
+            placeholder="Give a title to this task..."
+          />
         </div>
         <div class="field">
           <label></label>
-          <textarea rows="8" v-model="newTaskBody" placeholder="Add a task..."></textarea>
+          <textarea
+            data-test-id="task-body"
+            rows="8"
+            v-model="newTaskBody"
+            placeholder="Add a task..."
+          ></textarea>
         </div>
         <Calendar :active="true" :injectedDueDate="newTaskDueDate" @dueDateSet="setDueDateHandler"></Calendar>
         <div v-if="newTaskBody" class="field">
           <div
+            data-test-id="add-task-button"
             @submit.prevent
             @click="addTask"
             @keydown.enter="addTask"
