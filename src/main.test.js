@@ -1,8 +1,7 @@
 import { config, mount, flushPromises } from '@vue/test-utils'
 import App from './App.vue';
-import { describe, it, expect, vi, beforeEach, beforeAll } from "vitest";
+import { describe, it, expect, vi, beforeEach, beforeAll, afterEach } from "vitest";
 import axios from 'axios'
-
 
 beforeAll(async () => {
   config.global.mocks = {
@@ -23,6 +22,12 @@ beforeEach(async () => {
           [{ "name": "taskList1", "tasks": [{ body: "bodyTest1", completed: false, dueDate: null }, { body: "bodyTest2", completed: false, dueDate: null }] }, { "name": "taskList2", "tasks": [{ body: "bodyTest3", completed: false, dueDate: null }] }]
       }
     })
+  afterEach(async () => {
+    axios.put = vi.fn()
+    axios.post = vi.fn()
+    axios.patch = vi.fn()
+    axios.delete = vi.fn()
+  })
 })
 
 describe("", () => {
@@ -220,8 +225,6 @@ describe("", () => {
     He clicks the "Yes" button, so there should be no task left.
     */
 
-    axios.patch = vi.fn()
-    axios.delete = vi.fn()
 
     const wrapper = mount(App)
     await flushPromises()
@@ -456,7 +459,7 @@ describe("", () => {
 
     for (let testCase of testCases) await enterDueDate(testCase)
   })
-  it('Testing notification clicking mark as complete', async () => {
+  it('Testing notification clicking mark as completed', async () => {
     /* In taskList1 a user has a task with an anterior duedate, notifictation should be triggerd then he clicks marked as completed and task should be marked as completed and should not be visible anymore.
     */
     const date = new Date(Date.now() - 10000).toString()
@@ -513,8 +516,45 @@ describe("", () => {
     expect(inputTime.text()).toEqual("")
 
   })
-})
 
-// Test Task Creater
+  it('testing creation of a new task', async () => {
+
+    axios.put = vi.fn()
+      .mockImplementation(() => {
+        return { data: { body: "newTaskBody", title: "newTaskTitle", dueDate: null, completed: false } }
+      })
+
+    const wrapper = mount(App)
+    await flushPromises()
+
+    let firstTask = wrapper.get('[data-test-id=taskBody-0]')
+    let secondTask = wrapper.get('[data-test-id=taskBody-1]')
+    expect(firstTask.text()).toBe("bodyTest1")
+    expect(secondTask.text()).toBe("bodyTest2")
+
+    let taskCreater = wrapper.get('[data-test-id=task-creater]')
+    await taskCreater.trigger('click')
+
+    let taskTitle = wrapper.get('[data-test-id=task-title]')
+    let taskBody = wrapper.get('[data-test-id=task-body]')
+
+    await taskTitle.setValue("newTaskTitle")
+    await taskBody.setValue("newTaskBody")
+    expect(taskBody.element.value).toContain("newTaskBody")
+
+    let addTaskButton = wrapper.get('[data-test-id=add-task-button]')
+    await addTaskButton.trigger('click')
+    await flushPromises()
+    expect(axios.put).toHaveBeenCalledOnce()
+
+    addTaskButton = wrapper.find('[data-test-id=add-task-button]')
+    expect(addTaskButton.exists()).toBe(false)
+
+    firstTask = wrapper.get('[data-test-id=taskBody-0]')
+    let firstTaskHeader = wrapper.get('[data-test-id=taskHeader-0]')
+    expect(firstTask.text()).toBe("newTaskBody")
+    expect(firstTaskHeader.text()).toContain("newTaskTitle")
+
+  })
+})
 // test touch
-// Test nofication
