@@ -93,7 +93,6 @@ export default {
     },
 
     newTaskCreatedHandler(data) {
-      // to handle not completed task handler
       this.$emit('refreshTaskBar')
       this.tasks.unshift(data)
     },
@@ -193,6 +192,7 @@ export default {
       })
     },
     handleDropOver(index) {
+      console.log(index)
       if (this.draggedTaskIndex === '') {
         this.unSetDragTarget()
         return
@@ -203,7 +203,9 @@ export default {
         let arr1 = this.tasks.slice(0, index).filter(task => task !== taskToInsert)
         arr1.push(taskToInsert)
         let arr2 = this.tasks.slice(index,).filter(task => task !== taskToInsert)
+        console.log(this.tasks)
         this.tasks = arr1.concat(arr2)
+        console.log(this.tasks)
         this.updateTaskOrder()
       }
     },
@@ -217,12 +219,12 @@ export default {
       this.touchTimerStart = new Date().setFullYear(3000)
     },
     handleTouchEnd(index) {
-      /* If user touches a task longer than minduration, then he can moves it. 
-       if shorter simply select the task. */
-      let minduration = 500
+      /* If user touches a task longer than minduration, then he can moves it
+      around to reorder his task list. If shorter simply select the task. */
+      let minTouchDuration = 500
       let now = new Date()
-      let delta = now.valueOf() - this.touchTimerStart
-      if (delta >= minduration) this.handleDragStart(index)
+      let touchDuration = now.valueOf() - this.touchTimerStart
+      if (touchDuration >= minTouchDuration) this.handleDragStart(index)
       else if (this.tasks[index].isDragTarget !== true) {
         this.tasks[index].selected = true
       } else if (this.tasks[index].isDragTarget === true) {
@@ -247,7 +249,7 @@ export default {
       <TransitionGroup name="list">
         <div
           class="ui segment attached task-wrapper"
-          v-for="(task,index) in computedTasks"
+          v-for="(task,index) in tasks"
           @dragover.prevent
           @keydown.enter="task.selected = !task.selected"
           @dragstart="handleDragStart(index)"
@@ -262,7 +264,7 @@ export default {
           @touchmove="handleTouchMove()"
           :style="[task.isDragTarget ? 'border-top: solid' : 'border-top: none !important', 'z-index = -1']"
           :key="index"
-          :class="[task.selected && 'taskelement-active', index === this.draggedTaskIndex ? 'horizontal-shake' : '', task.selected ? '' : 'secondary']"
+          :class="[task.selected && 'taskelement-active', task.isDragTarget ? 'horizontal-shake' : '', task.selected ? '' : 'secondary',]"
           :draggable="task.draggable"
           tabindex="0"
         >
@@ -455,7 +457,6 @@ export default {
   margin: 0;
   width: 100% !important;
 }
-
 .completed {
   background-color: var(--green-completed);
 }
