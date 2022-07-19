@@ -107,7 +107,7 @@ export default {
   );
 }
 .wrapper {
-  max-width: min(95%, 960px);
+  max-width: min(95%, 900px);
   margin-left: auto;
   margin-right: auto;
 }
