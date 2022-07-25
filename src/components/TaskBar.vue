@@ -1,286 +1,252 @@
 <script>
 import Warning from "./Warning.vue"
-import axios from 'axios'
 import FadeTransition from './FadeTransition.vue'
 import Authentication from './Authentication.vue'
 
+import { store } from '../state/state'
+import { httpRequest } from "../lib/httpRequest"
+
 export default {
-  emits: ['taskListSelected', 'error', 'newNotifications'],
-  inject: ['apiUrl'],
+  emits: ['error', 'new-notifications'],
   components: {
     FadeTransition,
     Authentication,
     Warning
   },
-  props: {
-    refreshTaskBar: Boolean,
-    taskToUpdate: Object
-  },
   data() {
     return {
-      taskListArray: [],
+      store,
       auth0User: this.$auth0.user,
-      isLoading: this.$auth0.isLoading,
       isAuthenticated: this.$auth0.isAuthenticated,
 
-      creatingNewTaskList: false,
-      selectedTaskList: "",
-      taskListToDelete: "",
-      draggedTaskListIndex: "",
-      newTaskListName: "",
-      taskListToRename: "",
+      creatingNewProject: false,
+      renamingNewProject: false,
+
+      projectToDelete: null,
+      newProjectName: "",
+
+      draggedProjectIndex: -1,
+      hoveredProjectIndex: -1,
 
       touchTimerStart: 0,
-      isOverFlown: Boolean,
-      scrollInterval: Object
+      projectBarOverFlown: Boolean,
+      scrollSetIntervalId: Object
     }
   },
   watch: {
     isAuthenticated: {
       async handler() {
         if (this.isAuthenticated) {
-          await this.getTaskList()
-          this.isOverFlown = this.isOverFlownMenu()
-          this.checkTaskDueDate()
+          await this.getProjects()
+          this.projectBarOverFlown = this.isProjectBarOverFlown()
+          this.store.populateNotifications()
         }
       },
       immediate: true
-    },
-    refreshTaskBar() {
-      this.getTaskList()
     },
   },
   created() {
     window.addEventListener("resize", this.handleResize);
   },
+
   destroyed() {
     window.removeEventListener("resize", this.handleResize);
   },
-  mounted() {
-    setInterval(() => this.checkTaskDueDate(), 50000)
-  },
-  methods: {
-    checkTaskDueDate() {
-      if (!this.taskListArray) return
-      let taskToNotifyArray = []
-      for (let taskList of this.taskListArray) {
-        for (let task of taskList.tasks) {
-          if (task.dueDate !== null && task.completed === false) {
-            const taskDueDate = new Date(task.dueDate)
-            if (taskDueDate < Date.now()) {
-              task.taskListName = taskList.name
-              taskToNotifyArray.push(task)
-            }
-          }
-        }
-      }
-      this.$emit('newNotifications', taskToNotifyArray)
-    },
-    isOverFlownMenu() {
-      return this.$refs.taskListMenu.scrollWidth > this.$refs.taskListMenu.clientWidth
-    },
-    setSelectedTaskList(taskListName) {
-      this.selectedTaskList = taskListName
-      this.creatingNewTaskList = false
 
-      for (let taskList of this.taskListArray) {
-        if (taskList.name === taskListName) {
-          this.$emit('taskListSelected', taskList)
-          break
-        }
+  mounted() {
+    setInterval(() => this.store.populateNotifications(), 50000)
+  },
+
+  methods: {
+
+    async getProjects() {
+      try {
+        const accessToken = await this.$auth0.getAccessTokenSilently();
+        const response = await httpRequest(accessToken,
+          "get",
+          "/getProjects")
+        this.store.setProjects(response)
+      } catch (e) {
+        console.log(e)
       }
-      this.$emit('error', '')
     },
-    async newTaskListHandler() {
-      this.newTaskListName = ""
-      this.taskListToRename = ""
-      this.creatingNewTaskList = !this.creatingNewTaskList
+
+    isProjectBarOverFlown() {
+      return this.$refs.projectBar.scrollWidth > this.$refs.projectBar.clientWidth
+    },
+
+    setProjectToDelete() {
+      this.projectToDelete = { ...this.store.selectedProject }
+    },
+
+    setSelectedProject(project) {
+      this.store.setSelectedProject(project)
+      this.renamingNewProject = false
+    },
+
+    resetProjectToDelete() {
+      this.projectToDelete = null
+    },
+
+    async reOrderProjects() {
+      try {
+        const accessToken = await this.$auth0.getAccessTokenSilently();
+        await httpRequest(accessToken,
+          "patch",
+          "/updateProjectsOrder",
+          {
+            projects: this.store.projects.map(project => project._id)
+          })
+        this.store.reOrderProjects(this.draggedProjectIndex, this.hoveredProjectIndex)
+      } catch (e) {
+        console.log(e)
+      }
+    },
+
+    async addProject() {
+      try {
+        const accessToken = await this.$auth0.getAccessTokenSilently();
+        const response = await httpRequest(accessToken,
+          "put",
+          "/addProject",
+          {
+            name: this.newProjectName
+          })
+        this.store.addProject(response)
+      } catch (error) {
+        this.$emit('error', error)
+      } finally {
+        this.newProjectName = ""
+        this.creatingNewProject = false
+      }
+    },
+
+    async changeProjectName() {
+      const accessToken = await this.$auth0.getAccessTokenSilently();
+      try {
+        await httpRequest(accessToken,
+          "patch",
+          "/updateProject",
+          {
+            oldName: this.store.selectedProject.name,
+            newName: this.newProjectName
+          })
+        this.store.changeProjectName(
+          this.store.selectedProject.name,
+          this.newProjectName
+        )
+
+      } catch (error) {
+        console.log(error)
+        this.$emit('error', error)
+      } finally {
+        this.newProjectName = ""
+        this.renamingNewProject = false
+      }
+    },
+
+    async deleteProject() {
+      try {
+        const accessToken = await this.$auth0.getAccessTokenSilently();
+        await httpRequest(accessToken,
+          "delete",
+          "/deleteProject",
+          {
+            name: this.projectToDelete.name
+          })
+        this.store.deleteProject(this.projectToDelete)
+        this.resetProjectToDelete()
+      } catch (e) {
+        console.log(e)
+      }
+    },
+
+    async beforeCreatingProject() {
+      this.newProjectName = ""
+      this.creatingNewProject = true
       await this.$nextTick()
       this.$refs.newTaskNameInput.focus()
       // scroll max right when creating a new task list so input box is fully visible.
       this.handleScrollRight(1000)
     },
-    async renameTaskListHandler(taskList) {
-      this.newTaskListName = ""
-      this.taskListToRename = taskList
-      this.creatingNewTaskList = false
+
+    async beforeRenamingProject() {
+      this.newProjectName = ""
+      this.renamingNewProject = true
       await this.$nextTick()
-      this.$refs.renameTaskListInput[0].focus()
+      this.$refs.renameProjectInput[0].focus()
     },
 
-    unSetDragTarget() {
-      this.taskListArray = this.taskListArray.map(t => {
-        t.isDragTarget = false
-        return t
-      })
-    },
     handleDragStart(index) {
-      this.draggedTaskListIndex = index
+      this.draggedProjectIndex = index
+      this.hoveredProjectIndex = index
     },
-    handleDragEnter(index) {
-      this.taskListArray[index].isDragTarget = true
-    },
-    handleDropOver(index) {
 
-      if (this.draggedTaskListIndex === '') {
-        this.unSetDragTarget()
-        return
-      }
-      if (this.draggedTaskListIndex < index) index += 1
-      if (this.draggedTaskListIndex != index) {
-        let taskListToInsert = this.taskListArray[this.draggedTaskListIndex]
-        let arr1 = this.taskListArray.slice(0, index).filter(taskList => taskList !== taskListToInsert)
-        arr1.push(taskListToInsert)
-        let arr2 = this.taskListArray.slice(index,).filter(taskList => taskList !== taskListToInsert)
-        this.taskListArray = arr1.concat(arr2)
-        this.updateTaskListOrder()
-        this.unSetDragTarget()
-      }
+    handleDragEnter(index) {
+      this.hoveredProjectIndex = index
     },
-    handleDragEnd() {
-      this.unSetDragTarget()
-      this.draggedTaskListIndex = ""
+
+    async handleDragEnd() {
+      if ((this.draggedProjectIndex !== -1 && this.hoveredProjectIndex !== -1)
+        && (this.draggedProjectIndex !== this.hoveredProjectIndex)) {
+        try {
+          await this.reOrderProjects()
+        } catch (e) {
+          console.log(e)
+        }
+      }
+      this.resetDragData()
     },
-    handleTouchStart(index, taskListName) {
-      if (this.draggedTaskListIndex !== "") {
-        this.handleDropOver(index)
-        this.handleDragEnd()
+
+    resetDragData() {
+      this.draggedProjectIndex = -1
+      this.hoveredProjectIndex = -1
+    },
+
+    async handleTouchStart(index) {
+      if (this.draggedProjectIndex !== -1) {
+        this.hoveredProjectIndex = index
+        await this.handleDragEnd()
       } else {
-        this.setSelectedTaskList(taskListName)
+        this.store.setSelectedProject(index)
       }
       let now = new Date()
       this.touchTimerStart = now.valueOf()
     },
+
     handleTouchEnd(index) {
-      let minduration = 500
-      let now = new Date()
-      let delta = now.valueOf() - this.touchTimerStart
-      console.log(delta)
-      if (delta >= minduration) this.handleDragStart(index)
+      const minTouchDuration = 500
+      const now = new Date()
+      const touchDuration = now.valueOf() - this.touchTimerStart
+      if (touchDuration >= minTouchDuration) {
+        this.handleDragStart(index)
+      }
       this.touchTimerStart = 0
     },
-    async updateTaskListOrder() {
-      try {
-        const accessToken = await this.$auth0.getAccessTokenSilently();
-        await axios.patch("https://" + this.apiUrl + "/updateTaskListOrder",
-          {
-            taskLists: this.taskListArray.map(taskList => taskList._id)
-          },
-          {
-            headers: {
-              "Authorization": `Bearer ${accessToken}`,
-              "Content-type": "application/json; charset=UTF-8"
-            }
-          });
-      } catch (e) {
-        console.log(e)
-      }
-    },
-    async createTaskList() {
 
-      try {
-        const accessToken = await this.$auth0.getAccessTokenSilently();
-        const response = await axios.put("https://" + this.apiUrl + "/createTaskList",
-          {
-            name: this.newTaskListName
-          },
-          {
-            headers: {
-              "Authorization": `Bearer ${accessToken}`,
-              "Content-type": "application/json; charset=UTF-8"
-            },
-          })
-        const data = await response.data;
-        this.taskListArray.push(data)
-        this.setSelectedTaskList(this.newTaskListName)
-      } catch (e) {
-        console.log(e)
-        this.$emit('error', e.response.data.message)
-      }
-      this.newTaskListName = ""
-      this.creatingNewTaskList = false
-    },
-    async updateTaskList() {
-      try {
-        const accessToken = await this.$auth0.getAccessTokenSilently();
-        const response = await axios.patch("https://" + this.apiUrl + "/updateTaskList",
-          {
-            name: this.selectedTaskList,
-            newName: this.newTaskListName
-          },
-          {
-            headers: {
-              "Authorization": `Bearer ${accessToken}`,
-              "Content-type": "application/json; charset=UTF-8"
-            },
-          })
-        await response.data;
-        console.log(response)
-        this.taskListArray = this.taskListArray.map(taskList => {
-          if (taskList.name == this.selectedTaskList) {
-            taskList.name = this.newTaskListName
-          }
-          return taskList
-        })
-      } catch (e) {
-        console.log(e.response.data.message)
-        this.$emit('error', e.response.data.message)
-      }
-      this.newTaskListName = ""
-      this.taskListToRename = ""
-    },
-    async deleteTaskList(taskList) {
-      try {
-        const accessToken = await this.$auth0.getAccessTokenSilently();
-        await axios.delete("https://" + this.apiUrl + "/deleteTaskList", {
-          data: {
-            name: taskList
-          },
-          headers: {
-            "Authorization": `Bearer ${accessToken}`,
-            "Content-type": "application/json; charset=UTF-8"
-          },
-        })
-        this.taskListToDelete = ""
-        this.taskListArray = this.taskListArray.filter(t => t.name != taskList
-        )
-        this.setSelectedTaskList(this.taskListArray[0].name)
-      } catch (e) {
-        console.log(e)
-      }
-    },
-    async getTaskList() {
-      try {
-        const accessToken = await this.$auth0.getAccessTokenSilently();
-        const response = await axios.get("https://" + this.apiUrl + "/getTaskList", {
-          headers: {
-            "Authorization": `Bearer ${accessToken}`,
-            "Content-type": "application/json; charset=UTF-8"
-          }
-        });
-        this.taskListArray = await response.data
-        this.selectedTaskList || this.setSelectedTaskList(this.taskListArray[0].name)
-      } catch (e) {
-        console.log(e)
-      }
-    },
     handleMouseDown(callback) {
-      this.scrollInterval = setInterval(callback, 20)
+      this.scrollSetIntervalId = setInterval(callback, 20)
     },
+
     handleMouseUp() {
-      clearInterval(this.scrollInterval)
+      clearInterval(this.scrollSetIntervalId)
     },
+
     handleScrollLeft(step = 10) {
-      this.$refs.taskListMenu.scrollLeft -= step
+      this.$refs.projectBar.scrollLeft -= step
     },
+
     handleScrollRight(step = 10) {
-      this.$refs.taskListMenu.scrollLeft += step
+      this.$refs.projectBar.scrollLeft += step
     },
+
     handleResize() {
-      this.isOverFlown = this.isOverFlownMenu()
+      this.projectBarOverFlown = this.isProjectBarOverFlown()
     },
+
     handleWheel(event) {
-      event.deltaY < 0 ? this.handleScrollLeft(50) :
+      const scrollDown = event.deltaY < 0
+      scrollDown ? this.handleScrollLeft(50) :
         this.handleScrollRight(50)
     }
   }
@@ -297,7 +263,7 @@ export default {
           {{ auth0User.nickname }}
         </div>
         <div
-          v-if="isOverFlown"
+          v-if="projectBarOverFlown"
           @mousedown="handleMouseDown(handleScrollLeft)"
           @mouseup="handleMouseUp()"
           @touchstart.prevent.stop="handleMouseDown(handleScrollLeft)"
@@ -309,7 +275,7 @@ export default {
         </div>
       </div>
       <div
-        ref="taskListMenu"
+        ref="projectBar"
         v-if="isAuthenticated"
         class="ui inverted menu taskmenu"
         @wheel.prevent.stop="(event) => handleWheel(event)"
@@ -317,56 +283,60 @@ export default {
       >
         <a
           tabindex="0"
-          data-test-id="deleteTaskList"
+          data-test-id="deleteProject"
           class="item"
-          title="Delete selected task list."
-          @click="taskListToDelete = selectedTaskList"
-          @keydown.space.prevent="taskListToDelete = selectedTaskList"
-          v-if="selectedTaskList"
+          title="Delete selected project."
+          @click="setProjectToDelete"
+          @keydown.space.prevent="setProjectToDelete"
+          v-if="store.selectedProject"
         >
           <i class="delete icon"></i>
         </a>
 
         <div
           class="link item taskList"
-          v-for="(taskList,index) in taskListArray"
-          title="You can use drag and drop to reorder task lists."
-          data-test-id="taskListName"
-          @click="setSelectedTaskList(taskList.name)"
-          @dblclick="renameTaskListHandler(taskList.name)"
-          @keydown.space.prevent="setSelectedTaskList(taskList.name)"
-          @keydown.enter="renameTaskListHandler(taskList.name)"
+          v-for="(project, index) in store.projects"
+          title="You can use drag and drop to reorder projects."
+          data-test-id="projectName"
+          @click="setSelectedProject(index)"
+          @keydown.space.prevent="setSelectedProject(index)"
+          @dblclick="beforeRenamingProject"
+          @keydown.enter="beforeRenamingProject"
           @dragover.prevent
+          @drop.prevent
           @dragstart="handleDragStart(index)"
-          @drop.prevent="handleDropOver(index)"
           @dragenter="handleDragEnter(index)"
-          @dragend="handleDragEnd(index)"
-          @dragexit="taskList.isDragTarget = false"
-          @touchstart.prevent.stop="handleTouchStart(index, taskList.name)"
+          @dragend="handleDragEnd"
+          @touchstart.prevent.stop="handleTouchStart(index)"
           @touchend="handleTouchEnd(index)"
-          :class="[selectedTaskList == taskList.name && 'active', draggedTaskListIndex === index ? 'horizontal-shake' : '']"
-          :style="[taskList.isDragTarget ? 'border-left: 2px solid' : 'border-left: 1px']"
+          :key="index"
+          :class="[store.selectedProject.name === project.name && 'active', hoveredProjectIndex === index ? 'horizontal-shake' : '']"
+          :style="[hoveredProjectIndex === index ? 'border-left: 2px solid' : 'border-left: 1px']"
           tabindex="0"
-          draggable="true"
+          :draggable="!renamingNewProject"
         >
           <FadeTransition>
-            <div v-if="taskListToRename === taskList.name" class="ui action input">
+            <div
+              v-if="store.selectedProject.name === project.name
+              && renamingNewProject"
+              class="ui action input"
+            >
               <input
-                ref="renameTaskListInput"
+                ref="renameProjectInput"
                 data-test-id="inputNewTaskName"
-                v-model="newTaskListName"
+                v-model="newProjectName"
                 type="text"
-                :placeholder="taskList.name"
-                @keydown.esc="taskListToRename = ''"
+                :placeholder="project.name"
+                @keydown.esc="renamingNewProject = false"
                 @keydown.delete.stop
                 @keydown.space.stop
-                @keydown.enter.stop="newTaskListName ? updateTaskList() : taskListToRename = ''"
+                @keydown.enter.stop="newProjectName ? changeProjectName() : renamingNewProject = false"
               />
               <div
-                v-if="newTaskListName"
+                v-if="newProjectName"
                 data-test-id="confirmNewName"
                 class="ui icon button"
-                @click.stop="updateTaskList"
+                @click.stop="changeProjectName"
               >
                 <i class="check icon"></i>
               </div>
@@ -374,58 +344,58 @@ export default {
                 v-else
                 class="ui icon button"
                 data-test-id="cancelNewName"
-                @click.stop="taskListToRename = ''"
+                @click.stop="renamingNewProject = false"
               >
                 <i class="delete icon"></i>
               </div>
             </div>
             <span v-else>
               <i class="tasks icon collapsable"></i>
-              {{ taskList.name }} ({{ taskList.tasks.filter(t => !t.completed).length }})
+              {{ project.name }} ({{ project.tasks.filter(task => !task.completed).length }})
             </span>
           </FadeTransition>
         </div>
         <a
           class="item"
           data-test-id="createNewTaskListButton"
-          title="Create a new task list."
+          title="Create a new project."
           tabindex="0"
-          @click="newTaskListHandler"
-          @keydown.space.prevent="newTaskListHandler"
+          @click="beforeCreatingProject"
+          @keydown.space.prevent="beforeCreatingProject"
         >
           <FadeTransition>
-            <div v-if="creatingNewTaskList" class="ui action input">
+            <div v-if="creatingNewProject" class="ui action input">
               <input
                 ref="newTaskNameInput"
                 @click.stop
                 data-test-id="createNewTaskListInput"
-                v-model="newTaskListName"
+                v-model="newProjectName"
                 type="text"
                 placeholder="New task list name..."
-                @keydown.delete="!newTaskListName && (creatingNewTaskList = false)"
-                @keydown.esc="creatingNewTaskList = false"
+                @keydown.delete="!newProjectName && (creatingNewProject = false)"
+                @keydown.esc="creatingNewProject = false"
                 @keydown.space.stop
-                @keydown.enter="newTaskListName ? createTaskList() : creatingNewTaskList = false"
+                @keydown.enter="newProjectName ? addProject() : creatingNewProject = false"
               />
               <div
-                v-if="newTaskListName"
+                v-if="newProjectName"
                 data-test-id="validateTaskListNameButton"
                 class="ui icon button"
-                @click.stop="createTaskList"
+                @click.stop="addProject"
               >
                 <i class="check icon"></i>
               </div>
-              <div v-else class="ui icon button" @click.stop="creatingNewTaskList = false">
+              <div v-else class="ui icon button" @click.stop="creatingNewProject = false">
                 <i class="delete icon"></i>
               </div>
             </div>
           </FadeTransition>
-          <i v-if="!creatingNewTaskList" class="plus icon"></i>
+          <i v-if="!creatingNewProject" class="plus icon"></i>
         </a>
       </div>
       <div class="ui inverted menu right">
         <div
-          v-if="isAuthenticated && isOverFlown"
+          v-if="isAuthenticated && isProjectBarOverFlown"
           @mousedown="handleMouseDown(handleScrollRight)"
           @mouseup="handleMouseUp()"
           @touchstart.prevent.stop="handleMouseDown(handleScrollRight)"
@@ -440,11 +410,11 @@ export default {
     </div>
   </div>
   <FadeTransition>
-    <div style="margin-bottom: 16px;" v-if="taskListToDelete">
+    <div style="margin-bottom: 16px;" v-if="projectToDelete">
       <Warning
-        @no="taskListToDelete = ''"
-        @yes="deleteTaskList(taskListToDelete)"
-        :message="'Are you sure you want to delete task list ' + taskListToDelete + '?'"
+        @no="resetProjectToDelete"
+        @yes="deleteProject"
+        :message="'Are you sure you want to delete ' + projectToDelete.name + '?'"
       ></Warning>
     </div>
   </FadeTransition>
@@ -487,13 +457,13 @@ export default {
     transform: translateX(0);
   }
   25% {
-    transform: translateX(2px);
+    transform: translateX(1px);
   }
   50% {
-    transform: translateX(-2px);
+    transform: translateX(-1px);
   }
   75% {
-    transform: translateX(2px);
+    transform: translateX(1px);
   }
   100% {
     transform: translateX(0);

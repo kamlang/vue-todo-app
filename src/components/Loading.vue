@@ -1,3 +1,12 @@
+<script>
+import FadeTransition from './FadeTransition.vue'
+export default {
+  components: {
+    FadeTransition
+  },
+}
+</script>
+
 <template>
   <FadeTransition>
     <div class="ui icon message">
@@ -9,13 +18,3 @@
     </div>
   </FadeTransition>
 </template>
-<script>
-
-import FadeTransition from './FadeTransition.vue'
-export default {
-  components: {
-    FadeTransition
-  },
-}
-</script>
-

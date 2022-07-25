@@ -1,7 +1,8 @@
 import { config, mount, flushPromises } from '@vue/test-utils'
-import App from './App.vue';
 import { describe, it, expect, vi, beforeEach, beforeAll, afterEach } from "vitest";
-import axios from 'axios'
+import App from './App.vue';
+import { httpRequest } from './lib/httpRequest'
+import { v4 as uuidv4 } from 'uuid';
 
 beforeAll(async () => {
   config.global.mocks = {
@@ -9,52 +10,54 @@ beforeAll(async () => {
       user: { nickname: "userTest" },
       isAuthenticated: true,
       isLoading: false,
-      getAccessTokenSilently: () => vi.fn()
-    }
+      getAccessTokenSilently: () => vi.fn(),
+    },
   }
+  vi.mock('./lib/httpRequest', () => {
+    return {
+      httpRequest: vi.fn()
+    }
+  })
 })
 
 beforeEach(async () => {
-  axios.get = vi.fn()
-    .mockImplementation(() => {
-      return {
-        data:
-          [{ "name": "taskList1", "tasks": [{ body: "bodyTest1", completed: false, dueDate: null }, { body: "bodyTest2", completed: false, dueDate: null }] }, { "name": "taskList2", "tasks": [{ body: "bodyTest3", completed: false, dueDate: null }] }]
-      }
+  httpRequest
+    .mockImplementationOnce(() => {
+      return [{
+        _id: uuidv4(), "name": "project1", "tasks": [
+          { _id: uuidv4(), body: "bodyTest1", completed: false, dueDate: null },
+          { _id: uuidv4(), body: "bodyTest2", completed: false, dueDate: null }]
+      },
+      {
+        _id: uuidv4(), "name": "project2", "tasks": [
+          { _id: uuidv4(), body: "bodyTest3", completed: false, dueDate: null }]
+      }]
     })
-  afterEach(async () => {
-    axios.put = vi.fn()
-    axios.post = vi.fn()
-    axios.patch = vi.fn()
-    axios.delete = vi.fn()
-  })
 })
+
+afterEach(async () => {
+  httpRequest = vi.fn().mockReset()
+})
+
 
 describe("", () => {
   it("Testing rendering of user data and creation of a task list", async () => {
     /*  User arrives on the main page his data are supposed to be populated.
-     User has two tasklist named "taskList1" with a task "bodyTest" and "TaskList2" 
+     User has two tasklist named "project1" with a task "bodyTest" and "TaskList2" 
      Meaning his task list has to include both.
-     And he must have a task "bodyTest" rendered on taskList1.
+     And he must have a task "bodyTest" rendered on project1.
      Then he creates a new task list named "taskTest", 
      name should be added in the taskbar and the task list should be selected.
      meaning he should not have any task listed. */
-    axios.put = vi.fn()
-      .mockImplementationOnce(() => {
-        return {
-          data:
-            { "name": "taskListTest", "tasks": [] }
-        }
-      })
 
     const wrapper = mount(App)
-
     await flushPromises()
-    expect(axios.get).toHaveBeenCalledOnce()
+    expect(httpRequest).toHaveBeenCalledOnce()
 
-    let taskArray = wrapper.findAll('[data-test-id=taskListName]')
-    expect(taskArray.at(0).text()).toBe("taskList1 (2)")
-    expect(taskArray.at(1).text()).toBe("taskList2 (1)")
+    let projectsArray = wrapper.findAll('[data-test-id=projectName]')
+    expect(projectsArray.length).toBe(2)
+    expect(projectsArray.at(0).text()).toBe("project1 (2)")
+    expect(projectsArray.at(1).text()).toBe("project2 (1)")
 
     const taskBody = wrapper.get('[data-test-id=taskBody-0]')
     expect(taskBody.text()).toBe("bodyTest1")
@@ -64,154 +67,136 @@ describe("", () => {
     const createTaskInput = wrapper.get('[data-test-id=createNewTaskListInput]')
     await createTaskInput.setValue("taskListTest")
 
+    httpRequest.mockImplementationOnce(() => {
+      return { _id: uuidv4(), "name": "taskListTest", "tasks": [] }
+    })
     const validateTaskListName = wrapper.get('[data-test-id=validateTaskListNameButton]')
     await validateTaskListName.trigger("click")
     await flushPromises()
-    expect(axios.put).toHaveBeenCalledOnce()
+    expect(httpRequest).toHaveBeenCalledTimes(2)
 
-    taskArray = await wrapper.findAll('[data-test-id="taskListName"]')
-    expect(taskArray.at(0).text()).toBe("taskList1 (2)")
-    expect(taskArray.at(1).text()).toBe("taskList2 (1)")
-    expect(taskArray.at(2).text()).toBe("taskListTest (0)")
-    expect(taskArray.at(2).classes()).toContain('active')
-    expect(() => wrapper.get('[data-test-id=taskBody]'))
-      .toThrowError()
+    projectsArray = await wrapper.findAll('[data-test-id="projectName"]')
+    expect(projectsArray.at(0).text()).toBe("project1 (2)")
+    expect(projectsArray.at(1).text()).toBe("project2 (1)")
+    expect(projectsArray.at(2).text()).toBe("taskListTest (0)")
+    expect(projectsArray.at(2).classes()).toContain('active')
+    expect(wrapper.find('[data-test-id=taskBody]').exists()).toBe(false)
+
   })
-  it("Deleting a task list", async () => {
-    /* User have two tasks list taskList1 and taskList2, taskList1 is selected. 
-    He clicks on delete button choose "No" at warning message so taskList1 
-    should still exists. Then he clicks "Yes" taskList1 should have been deleted */
-    axios.delete = vi.fn()
+  it("Deleting a project", async () => {
+    /* A user has two projects project1 and project2, project1 is selected. 
+    He clicks on delete button choose "No" at warning message so project1 
+    should still exists. Then he clicks "Yes" project1 should have been deleted */
     const wrapper = mount(App)
     await flushPromises()
-    expect(axios.get).toHaveBeenCalledOnce()
 
-    let taskArray = wrapper.findAll('[data-test-id=taskListName]')
-    expect(taskArray.at(0).text()).toBe("taskList1 (2)")
-    expect(taskArray.at(1).text()).toBe("taskList2 (1)")
-
-    const deleteButton = wrapper.find("[data-test-id=deleteTaskList]")
+    const deleteButton = wrapper.find("[data-test-id=deleteProject]")
     await deleteButton.trigger("click")
     const warnNoButton = wrapper.find("[data-test-id=warnNo]")
     await warnNoButton.trigger("click")
-    taskArray = wrapper.findAll('[data-test-id=taskListName]')
-    expect(taskArray.at(0).text()).toBe("taskList1 (2)")
-    expect(taskArray.at(1).text()).toBe("taskList2 (1)")
-
+    let projectsArray = wrapper.findAll('[data-test-id=projectName]')
+    expect(projectsArray.at(0).text()).toBe("project1 (2)")
+    expect(projectsArray.at(1).text()).toBe("project2 (1)")
+    expect(projectsArray.length).toBe(2)
     await deleteButton.trigger("click")
     const warnYesButton = wrapper.find("[data-test-id=warnYes]")
     await warnYesButton.trigger("click")
     await flushPromises()
-    expect(axios.delete).toHaveBeenCalledOnce()
+    expect(httpRequest).toHaveBeenCalledTimes(2)
 
-    taskArray = wrapper.findAll('[data-test-id=taskListName]')
-    expect(taskArray.length).toBe(1)
-    expect(taskArray[0].text()).not.contain("taskList1 (2)")
+    projectsArray = wrapper.findAll('[data-test-id=projectName]')
 
+    expect(projectsArray.length).toBe(1)
+    expect(projectsArray[0].text()).not.contain("project1 (2)")
   })
-  it("rename task list", async () => {
+  it("rename project", async () => {
     /* User double click a taskname to rename it an inputbox should appear.
     First time it doesn't enter a new name and cancel it input box should disappear. 
-    Next he clicks again and enter "taskList3" as new name.
-    name should be updated in task list bar. Then he tries to rename taskList2 to taskList3
+    Next he clicks again and enter "project3" as new name.
+    name should be updated in task list bar. Then he tries to rename project2 to project3
     which should display and error message as two task list can't have the same name.
     */
-    axios.patch = vi.fn()
-      .mockImplementationOnce(() => { return { data: {} } })
-
     const wrapper = mount(App)
     await flushPromises()
-    expect(axios.get).toHaveBeenCalledOnce()
 
-    let taskArray = wrapper.findAll('[data-test-id=taskListName]')
-    expect(taskArray.at(0).text()).toBe("taskList1 (2)")
-    expect(taskArray.at(1).text()).toBe("taskList2 (1)")
-
-    await taskArray[0].trigger("dblclick")
+    let projectsArray = wrapper.findAll('[data-test-id=projectName]')
+    await projectsArray[0].trigger("dblclick")
     const inputNewTaskName = wrapper.get('[data-test-id=inputNewTaskName]')
     const cancelNewName = wrapper.get('[data-test-id=cancelNewName]')
-    expect(() => wrapper.get('[data-test-id=confirmNewName]')).toThrowError()
+    expect(wrapper.find('[data-test-id=confirmNewName]').exists()).toBe(false)
     await cancelNewName.trigger("click")
-    expect(() => wrapper.get('[data-test-id=inputNewTaskName]')).toThrowError()
+    expect(wrapper.find('[data-test-id=inputNewTaskName]').exists()).toBe(false)
 
-    taskArray = wrapper.findAll('[data-test-id=taskListName]')
-    expect(taskArray.length).toEqual(2)
-    await taskArray[0].trigger("dblclick")
-    await inputNewTaskName.setValue("taskList3")
+    projectsArray = wrapper.findAll('[data-test-id=projectName]')
+    expect(projectsArray.length).toEqual(2)
+    await projectsArray[0].trigger("dblclick")
+    await inputNewTaskName.setValue("project3")
 
     let confirmNewName = wrapper.get('[data-test-id=confirmNewName]')
     await confirmNewName.trigger("click")
     await flushPromises()
-    expect(axios.patch).toHaveBeenCalledOnce()
+    expect(httpRequest).toHaveBeenCalledTimes(2)
 
-    taskArray = wrapper.findAll('[data-test-id=taskListName]')
-    expect(taskArray.length).toEqual(2)
-    expect(taskArray.at(0).text()).toBe("taskList3 (2)")
-    expect(taskArray.at(1).text()).toBe("taskList2 (1)")
+    projectsArray = wrapper.findAll('[data-test-id=projectName]')
+    expect(projectsArray.length).toEqual(2)
+    expect(projectsArray.at(0).text()).toBe("project3 (2)")
+    expect(projectsArray.at(1).text()).toBe("project2 (1)")
   })
-  it("rename and create a task list with already exisiting names.", async () => {
+  it("rename and create a project with already exisiting names.", async () => {
     /* User tries to rename a task list with a name which already exists
     Then he tries to create a new one with an already existing name, 
     an error message should be displayed and user should be able to close it using
     the close icon. Task list name in the task bar should remain unchanged. */
 
     // mocking http error returned by the server.
-    axios.patch = vi.fn()
-      .mockImplementation(() =>
-        new Promise((_, rej) => rej({ response: { data: { message: 'error' } } }))
-      )
-
-    axios.put = vi.fn()
-      .mockImplementation(() =>
-        new Promise((_, rej) => rej({ response: { data: { message: 'error' } } }))
-      )
 
     const wrapper = mount(App)
     await flushPromises()
-    expect(axios.get).toHaveBeenCalledOnce()
-
-    let taskArray = wrapper.findAll('[data-test-id=taskListName]')
-    expect(taskArray.at(0).text()).toBe("taskList1 (2)")
-    expect(taskArray.at(1).text()).toBe("taskList2 (1)")
-
-    await taskArray[0].trigger("dblclick")
+    let projectsArray = wrapper.findAll('[data-test-id=projectName]')
+    await projectsArray[0].trigger("dblclick")
     let inputNewTaskName = wrapper.find('[data-test-id=inputNewTaskName]')
     expect(inputNewTaskName.exists()).toBe(true)
     expect(wrapper.find('[data-test-id=confirmNewName]').exists()).toBe(false)
 
-    await inputNewTaskName.setValue("taskList2 (1)")
+    httpRequest.mockImplementation(() =>
+      new Promise((_, rej) => rej('error'))
+    )
+
+    await inputNewTaskName.setValue("project2 (1)")
     let confirmNewNameButton = wrapper.find('[data-test-id=confirmNewName]')
     expect(confirmNewNameButton.exists()).toBe(true)
     await confirmNewNameButton.trigger('click')
     await flushPromises()
-    expect(axios.patch).toHaveBeenCalledOnce()
+    // change for called with
+    expect(httpRequest).toHaveBeenCalledTimes(2)
 
     let errorMessageClose = wrapper.find('[data-test-id=errorMessageClose]')
     await errorMessageClose.trigger('click')
     expect(wrapper.find('[data-test-id=errorMessage]').exists()).toBe(false)
 
-    taskArray = wrapper.findAll('[data-test-id=taskListName]')
-    expect(taskArray.at(0).text()).toBe("taskList1 (2)")
-    expect(taskArray.at(1).text()).toBe("taskList2 (1)")
+    projectsArray = wrapper.findAll('[data-test-id=projectName]')
+    expect(projectsArray.at(0).text()).toBe("project1 (2)")
+    expect(projectsArray.at(1).text()).toBe("project2 (1)")
 
     const createTaskButton = wrapper.get('[data-test-id=createNewTaskListButton]')
     await createTaskButton.trigger("click")
 
     const createTaskInput = wrapper.get('[data-test-id=createNewTaskListInput]')
-    await createTaskInput.setValue("taskList1 (2)")
+    await createTaskInput.setValue("project1 (2)")
 
     expect(confirmNewNameButton.exists()).toBe(true)
     await createTaskInput.trigger('keydown.enter')
     await flushPromises()
-    expect(axios.put).toHaveBeenCalledOnce()
+    // change for called with
+    expect(httpRequest).toHaveBeenCalledTimes(3)
 
     errorMessageClose = wrapper.find('[data-test-id=errorMessageClose]')
     await errorMessageClose.trigger('click')
     expect(wrapper.find('[data-test-id=errorMessage]').exists()).toBe(false)
 
-    taskArray = wrapper.findAll('[data-test-id=taskListName]')
-    expect(taskArray.at(0).text()).toBe("taskList1 (2)")
-    expect(taskArray.at(1).text()).toBe("taskList2 (1)")
+    projectsArray = wrapper.findAll('[data-test-id=projectName]')
+    expect(projectsArray.at(0).text()).toBe("project1 (2)")
+    expect(projectsArray.at(1).text()).toBe("project2 (1)")
 
   })
 
@@ -225,14 +210,8 @@ describe("", () => {
     He clicks the "Yes" button, so there should be no task left.
     */
 
-
     const wrapper = mount(App)
     await flushPromises()
-    expect(axios.get).toHaveBeenCalledOnce()
-
-    let taskArray = wrapper.findAll('[data-test-id=taskListName]')
-    expect(taskArray.at(0).text()).toBe("taskList1 (2)")
-    expect(taskArray.at(1).text()).toBe("taskList2 (1)")
 
     let taskBody = wrapper.get('[data-test-id=taskBody-0]')
     expect(taskBody.text()).toBe("bodyTest1")
@@ -258,15 +237,24 @@ describe("", () => {
     await editInputBox.setValue('editBodyTest')
     await confirmEditButton.trigger('click')
     await flushPromises()
-    expect(axios.patch).toHaveBeenCalledOnce()
+    // change to calledWith
+    expect(httpRequest).toHaveBeenCalledTimes(2)
 
     expect(taskBody.text()).toBe("editBodyTest")
+    await taskBody.trigger('click')
+    await deleteTaskButton.trigger('mouseup')
+
+    const warnNo = wrapper.get('[data-test-id=warnNo]')
+    await warnNo.trigger('click')
+    taskBody = wrapper.find('[data-test-id=taskBody-1]')
+    expect(taskBody.exists()).toBe(true)
+
     await taskBody.trigger('click')
     await deleteTaskButton.trigger('mouseup')
     const warnYes = wrapper.get('[data-test-id=warnYes]')
     await warnYes.trigger('click')
     await flushPromises()
-    expect(axios.delete).toHaveBeenCalledOnce()
+    expect(httpRequest).toHaveBeenCalledTimes(3)
     taskBody = wrapper.find('[data-test-id=taskBody-1]')
     expect(taskBody.exists()).toBe(false)
 
@@ -275,14 +263,9 @@ describe("", () => {
   it('testing drag and drop', async () => {
     /* User has two tasks, he takes the last task in the list and
     drag it over the first. Order of tasks should be switched. */
+    // TODO: Add more task to the list
     const wrapper = mount(App)
-
     await flushPromises()
-    expect(axios.get).toHaveBeenCalledOnce()
-
-    let taskListArray = wrapper.findAll('[data-test-id=taskListName]')
-    expect(taskListArray.at(0).text()).toBe("taskList1 (2)")
-    expect(taskListArray.at(1).text()).toBe("taskList2 (1)")
 
     let firstTaskHeader = wrapper.get('[data-test-id=taskHeader-0]')
     let lastTaskHeader = wrapper.get('[data-test-id=taskHeader-1]')
@@ -291,23 +274,21 @@ describe("", () => {
 
     await lastTaskHeader.trigger('dragstart')
     await firstTaskHeader.trigger('dragenter')
-    await firstTaskHeader.trigger('drop')
+    await firstTaskHeader.trigger('dragend')
 
     expect(firstTask.text()).toEqual("bodyTest2")
+    expect(httpRequest).toHaveBeenCalledTimes(2)
+    // check that request has been done with appropriate parameters
   })
 
   it('push to the top button', async () => {
     /* User has two tasks, he clicks the push to the top button,
     previously second task should now be the first one.*/
-    axios.post = vi.fn()
-      .mockImplementationOnce(() => {
-        return { data: [{ body: "bodyTest1", completed: false }, { body: "bodyTest2", completed: false }] }
-      })
     const wrapper = mount(App)
-
     await flushPromises()
-    expect(axios.get).toHaveBeenCalledOnce()
-    let firstTask = wrapper.find('[data-test-id=taskBody-0]')
+
+    expect(httpRequest).toHaveBeenCalledOnce()
+    let firstTask = wrapper.get('[data-test-id=taskBody-0]')
     let secondTask = wrapper.get('[data-test-id=taskBody-1]')
     expect(firstTask.text()).toBe("bodyTest1")
     expect(secondTask.text()).toBe("bodyTest2")
@@ -316,6 +297,8 @@ describe("", () => {
     let pushTopButton = wrapper.get('[data-test-id=pushTopButton]')
     await pushTopButton.trigger('mouseup')
 
+    expect(httpRequest).toHaveBeenCalledTimes(2)
+    // check that httpRequest has been called with
     firstTask = wrapper.get('[data-test-id=taskBody-0]')
     secondTask = wrapper.get('[data-test-id=taskBody-1]')
 
@@ -327,55 +310,52 @@ describe("", () => {
     /* User has two tasks he marks one as completed, so it should be removed.
     Then he clicks on the "toggle show completed" button he should see it there.
     Then he put it back as not completed, task should appear in the "not completed" list again.*/
-    axios.post = vi.fn()
-      .mockImplementationOnce(() => {
-        return { data: [{ body: "bodyTest1", completed: false }, { body: "bodyTest2", completed: false }] }
-      })
     const wrapper = mount(App)
-
     await flushPromises()
-    expect(axios.get).toHaveBeenCalledOnce()
-    let firstTask = wrapper.find('[data-test-id=taskBody-0]')
+
+    expect(httpRequest).toHaveBeenCalledOnce()
+    let firstTask = wrapper.get('[data-test-id=taskBody-0]')
     let secondTask = wrapper.get('[data-test-id=taskBody-1]')
+    expect(firstTask.text()).toBe("bodyTest1")
+    expect(secondTask.text()).toBe("bodyTest2")
     await secondTask.trigger('click')
 
     let markAsCompletedButton = wrapper.get('[data-test-id=markAsCompletedButton]')
     await markAsCompletedButton.trigger('mouseup')
+    await flushPromises()
 
-    secondTask = wrapper.find('[data-test-id=taskBody-1]')
-    expect(secondTask.exists()).toBe(false)
+    secondTask = wrapper.get('[data-test-id=taskBody-1]')
+    expect(secondTask.isVisible()).toBe(false)
 
     let toggleButton = wrapper.get('[data-test-id=toggle-show-completed]')
     await toggleButton.trigger('click')
-    expect(firstTask.text()).toBe("bodyTest2")
+    expect(secondTask.isVisible()).toBe(true)
 
-    await firstTask.trigger('click')
+    await secondTask.trigger('click')
     await markAsCompletedButton.trigger('mouseup')
     await toggleButton.trigger('click')
-
-    secondTask = wrapper.get('[data-test-id=taskBody-1]')
-    expect(secondTask.text()).toBe("bodyTest2")
-
+    await flushPromises()
+    expect(httpRequest).toHaveBeenCalledTimes(3)
+    expect(secondTask.isVisible()).toBe(false)
   })
   it('edit duedate of a task using calendar component', async () => {
     /* A user chooses to edit a task. Then he clicks on the date input field,
- calendar should shows up. User select a date in the past this should not be taken into account. Then he chooses a date in the future (delete button should appear, if clicked due date should be set back to "") Then he tries to set a time which is not valid.
- Time value should be reset to 00:00. Then he sets a valid time.
- Then he clicks cancel button, changes should do not have been updated when user tries to edit the task again.
- Then he presses the editTask button once again and choose a valid date and time and press save. We're checking if the updateTask api request include the correct due date.
- When trying to edit the task for one more time we should see the correct due date and time in the input fields. */
+  calendar should shows up. User select a date in the past this should not be taken into account. Then he chooses a date in the future (delete button should appear, if clicked due date should be set back to "") Then he tries to set a time which is not valid.
+  Time value should be reset to 00:00. Then he sets a valid time.
+  Then he clicks cancel button, changes should do not have been updated when user tries to edit the task again.
+  Then he presses the editTask button once again and choose a valid date and time and press save. We're checking if the updateTask api request include the correct due date.
+  When trying to edit the task for one more time we should see the correct due date and time in the input fields. */
 
-    const date = new Date(2022, 6, 21, 19)
+    const date = new Date(2024, 6, 21, 19)
+    // Set an arbitrary date to test calendar functionalities, date has to be set in the future otherwise troubles arise when some events are triggered.
+
+    vi.useFakeTimers()
     vi.setSystemTime(date)
-
-    axios.post = vi.fn()
-      .mockImplementation(() => {
-        return { data: [{ body: "bodyTest1", completed: false, dueDate: null }, { body: "bodyTest2", completed: false, dueDate: null }] }
-      })
-    axios.patch = vi.fn()
     const wrapper = mount(App)
     await flushPromises()
-    let firstTask = wrapper.find('[data-test-id=taskBody-0]')
+
+    expect(httpRequest).toHaveBeenCalledOnce()
+    let firstTask = wrapper.get('[data-test-id=taskBody-0]')
     let secondTask = wrapper.get('[data-test-id=taskBody-1]')
     expect(firstTask.text()).toBe("bodyTest1")
     expect(secondTask.text()).toBe("bodyTest2")
@@ -433,8 +413,8 @@ describe("", () => {
       if (action === 'confirm') {
         await confirmEditButton.trigger('click')
         await flushPromises()
-        expect(axios.patch).toHaveBeenCalledWith(expect.anything(),
-          expect.objectContaining({ "dueDate": expect.stringMatching("Jul 26 2022 10:42") }), expect.anything())
+        expect(httpRequest).toHaveBeenNthCalledWith(2, expect.anything(), "patch", "/updateTask",
+          expect.objectContaining({ "dueDate": expect.stringMatching("Jul 26 2024 10:42") }))
 
         await secondTask.trigger('click')
         await editTaskButton.trigger('mouseup')
@@ -458,40 +438,61 @@ describe("", () => {
     const testCases = ['cancel', 'confirm']
 
     for (let testCase of testCases) await enterDueDate(testCase)
+    vi.useRealTimers()
   })
   it('Testing notification clicking mark as completed', async () => {
-    /* In taskList1 a user has a task with an anterior duedate, notifictation should be triggerd then he clicks marked as completed and task should be marked as completed and should not be visible anymore.
+    /* In project1 a user has a task with an anterior duedate, notifictation should be triggerd then he clicks marked as completed and task should be marked as completed and should not be visible anymore.
     */
     const date = new Date(Date.now() - 10000).toString()
-    axios.get = vi.fn()
-      .mockImplementation(() => {
-        return {
-          data:
-            [{ "name": "taskList1", "tasks": [{ body: "bodyTest1", completed: false, dueDate: date }, { body: "bodyTest2", completed: false, dueDate: null }] }, { "name": "taskList2", "tasks": [{ body: "bodyTest3", completed: false, dueDate: null }] }]
-        }
+    httpRequest = vi.fn()
+      .mockImplementationOnce(() => {
+        return [{
+          _id: uuidv4(), "name": "project1", "tasks": [
+            { _id: uuidv4(), body: "bodyTest1", completed: false, dueDate: date },
+            { _id: uuidv4(), body: "bodyTest2", completed: false, dueDate: null }
+          ]
+        },
+        {
+          _id: uuidv4(), "name": "project2", "tasks": [
+            { _id: uuidv4(), body: "bodyTest3", completed: false, dueDate: null }
+          ]
+        }]
       })
+
     const wrapper = mount(App)
     await flushPromises()
 
-    let firstTask = wrapper.find('[data-test-id=taskBody-0]')
+    let firstTask = wrapper.get('[data-test-id=taskBody-0]')
     let secondTask = wrapper.get('[data-test-id=taskBody-1]')
     expect(firstTask.text()).toBe("bodyTest1")
     expect(secondTask.text()).toBe("bodyTest2")
-
-    const notificationElement = wrapper.get('[data-test-id=notification-container]')
+    let notificationElement = wrapper.get('[data-test-id=notification-container]')
     expect(notificationElement.text()).toContain("bodyTest1")
+    // not finished should click on the button and check for a call to server
+    const markAsCompletedButton = wrapper.get('[data-test-id="notification-markascompleted"]')
+    await markAsCompletedButton.trigger('click')
 
+    notificationElement = wrapper.find('[data-test-id=notification-container]')
+    expect(notificationElement.exists()).toBe(false)
   })
 
   it('Testing notification clicking dismiss', async () => {
     const date = new Date(Date.now() - 10000).toString()
-    axios.get = vi.fn()
-      .mockImplementation(() => {
-        return {
-          data:
-            [{ "name": "taskList1", "tasks": [{ body: "bodyTest1", completed: false, dueDate: date }, { body: "bodyTest2", completed: false, dueDate: null }] }, { "name": "taskList2", "tasks": [{ body: "bodyTest3", completed: false, dueDate: null }] }]
-        }
+    httpRequest = vi.fn()
+      .mockImplementationOnce(() => {
+        return [{
+          _id: uuidv4(), "name": "project1", "tasks": [
+            { _id: uuidv4(), body: "bodyTest1", completed: false, dueDate: date },
+            { _id: uuidv4(), body: "bodyTest2", completed: false, dueDate: null }
+          ]
+        },
+        {
+          _id: uuidv4(), "name": "project2", "tasks": [
+            { _id: uuidv4(), body: "bodyTest3", completed: false, dueDate: null }
+          ]
+        }]
       })
+
     const wrapper = mount(App)
     await flushPromises()
 
@@ -519,11 +520,6 @@ describe("", () => {
 
   it('testing creation of a new task', async () => {
 
-    axios.put = vi.fn()
-      .mockImplementation(() => {
-        return { data: { body: "newTaskBody", title: "newTaskTitle", dueDate: null, completed: false } }
-      })
-
     const wrapper = mount(App)
     await flushPromises()
 
@@ -542,10 +538,14 @@ describe("", () => {
     await taskBody.setValue("newTaskBody")
     expect(taskBody.element.value).toContain("newTaskBody")
 
+    httpRequest.mockImplementation(() => {
+      return { body: "newTaskBody", title: "newTaskTitle", dueDate: null, completed: false }
+    })
+
     let addTaskButton = wrapper.get('[data-test-id=add-task-button]')
     await addTaskButton.trigger('click')
     await flushPromises()
-    expect(axios.put).toHaveBeenCalledOnce()
+    expect(httpRequest).toHaveBeenCalledTimes(2)
 
     addTaskButton = wrapper.find('[data-test-id=add-task-button]')
     expect(addTaskButton.exists()).toBe(false)

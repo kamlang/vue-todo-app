@@ -1,12 +1,13 @@
 
 <script>
 import Calendar from "./Calendar.vue"
-import axios from "axios"
 import FadeTransition from "./FadeTransition.vue"
 
+import { store } from '../state/state'
+import { httpRequest } from "../lib/httpRequest"
+
 export default {
-  emits: ['toggleShowCompleted', 'newTaskCreated', 'error'],
-  inject: ['apiUrl'],
+  emits: ['toggle-show-completed', 'error'],
   components: {
     Calendar,
     FadeTransition
@@ -14,18 +15,18 @@ export default {
 
   data() {
     return {
+      store,
       newTaskBody: "",
       newTaskTitle: "",
       newTaskDueDate: "",
       showCompletedTasks: false,
       showTaskForm: false,
+      selectedProject: Object
     }
   },
-  props: {
-    selectedTaskList: String
-  },
   watch: {
-    selectedTaskList() {
+
+    selectedProject() {
       this.showTaskForm = false
       this.$refs.toggleShowCompletedCheckbox.checked = false
       this.newTaskDueDate = ""
@@ -33,32 +34,37 @@ export default {
       this.newTaskTitle = ""
     },
   },
+
+  mounted() {
+    this.selectedProject = this.store.selectedProject
+  },
+
   methods: {
+
     toggleShowCompleted() {
       this.showCompletedTasks = !this.showCompletedTasks
-      this.$emit('toggleShowCompleted', this.showCompletedTasks)
+      this.$emit('toggle-show-completed')
     },
-    setDueDateHandler(date) {
+
+    handleSetDueDate(date) {
       this.newTaskDueDate = date
     },
+
     async addTask() {
       try {
         const accessToken = await this.$auth0.getAccessTokenSilently();
-        const response = await axios.put("https://" + this.apiUrl + "/addTask",
+
+        const response = await httpRequest(accessToken,
+          "put",
+          "/addTask",
           {
-            name: this.selectedTaskList,
+            name: this.store.selectedProject.name,
             title: this.newTaskTitle,
             body: this.newTaskBody,
             dueDate: this.newTaskDueDate,
           },
-          {
-            headers: {
-              "Authorization": `Bearer ${accessToken}`,
-              "Content-type": "application/json; charset=UTF-8"
-            },
-          })
-        const data = await response.data
-        this.$emit('newTaskCreated', data)
+        )
+        this.store.addTaskToSelectedProject(response)
         this.$emit('error', '')
         this.newTaskBody = ""
         this.newTaskDueDate = ""
@@ -85,8 +91,8 @@ export default {
       :title="showCompletedTasks ? 'Hide completed tasks.' : 'Show completed tasks.'"
       data-test-id="toggle-show-completed"
       @keydown.space.stop="toggleShowCompleted"
-      class="ui toggle checkbox right floated"
       @click.stop="toggleShowCompleted"
+      class="ui toggle checkbox right floated"
     >
       <input ref="toggleShowCompletedCheckbox" type="checkbox" name="public" />
       <label></label>
@@ -114,7 +120,12 @@ export default {
             placeholder="Add a task..."
           ></textarea>
         </div>
-        <Calendar :active="true" :injectedDueDate="newTaskDueDate" @dueDateSet="setDueDateHandler"></Calendar>
+        <Calendar
+          :active="true"
+          :injectedDueDate="newTaskDueDate"
+          @dueDateSet="handleSetDueDate
+          "
+        ></Calendar>
         <div v-if="newTaskBody" class="field">
           <div
             data-test-id="add-task-button"

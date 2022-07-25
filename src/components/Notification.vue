@@ -1,6 +1,8 @@
 <script>
+import FadeTransition from "./FadeTransition.vue"
 export default {
   emits: ['markTaskAsCompleted', 'dismissTaskReminder'],
+  components: { FadeTransition },
   props: {
     task: Object
   }
@@ -8,36 +10,38 @@ export default {
 </script>
 
 <template>
-  <div class="ui fluid container small icon teal message">
-    <div class="ui container">
-      <div data-test-id="notification-container" class="flex-container content">
-        <i class="tasks icon"></i>
-        <b>{{ task.taskListName }}:</b>
-        <br />
-        <q>
-          <i>{{ task.body }}</i>
-        </q>
-      </div>
-      <div class="flex-container buttons">
-        <div
-          data-test-id="notification-markascompleted"
-          tabindex="0"
-          class="ui right floated button"
-          @keydown.enter="$emit('markTaskAsCompleted', task)"
-          @click="$emit('markTaskAsCompleted', task)"
-          @touchstart.prevent="$emit('markTaskAsCompleted', task)"
-        >Mark as completed</div>
-        <div
-          data-test-id="notification-dismiss"
-          tabindex="0"
-          class="ui right floated button"
-          @keydown.enter="$emit('dismissTaskReminder', task)"
-          @click="$emit('dismissTaskReminder', task)"
-          @touchstart.prevent="$emit('dismissTaskReminder', task)"
-        >Dismiss</div>
+  <FadeTransition>
+    <div class="ui fluid container small icon teal message">
+      <div class="ui container">
+        <div data-test-id="notification-container" class="flex-container content">
+          <i class="tasks icon"></i>
+          <b>{{ task.projectName }}:</b>
+          <br />
+          <q>
+            <i>{{ task.body }}</i>
+          </q>
+        </div>
+        <div class="flex-container buttons">
+          <div
+            data-test-id="notification-markascompleted"
+            tabindex="0"
+            class="ui right floated button"
+            @keydown.enter="$emit('markTaskAsCompleted')"
+            @click="$emit('markTaskAsCompleted')"
+            @touchstart.prevent="$emit('markTaskAsCompleted')"
+          >Mark as completed</div>
+          <div
+            data-test-id="notification-dismiss"
+            tabindex="0"
+            class="ui right floated button"
+            @keydown.enter="$emit('dismissTaskReminder')"
+            @click="$emit('dismissTaskReminder')"
+            @touchstart.prevent="$emit('dismissTaskReminder')"
+          >Dismiss</div>
+        </div>
       </div>
     </div>
-  </div>
+  </FadeTransition>
 </template>
 <style scoped>
 .flex-container.buttons {

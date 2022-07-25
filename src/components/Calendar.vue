@@ -1,85 +1,5 @@
-<template>
-  <div class="two fields">
-    <div class="field">
-      <div class="ui left icon input" :class="(showCalendar || dueDate) && 'action'">
-        <i class="calendar icon"></i>
-        <input
-          data-test-id="input-duedate"
-          @touchend.prevent.stop="active && (showCalendar = !showCalendar)"
-          @mouseup="showCalendar = !showCalendar"
-          @keydown.prevent
-          @mousedown.prevent
-          :value="formatedDueDate"
-          type="text"
-          placeholder="Set a reminder..."
-          tabindex="-1"
-        />
-
-        <button
-          v-if="dueDate && active || showCalendar"
-          data-test-id="delete-duedate-button"
-          @click.stop="unSetDueDate"
-          @touchstart.prevent.stop
-          @touchend.stop="unSetDueDate"
-          class="ui icon button"
-        >
-          <i class="delete icon"></i>
-        </button>
-      </div>
-    </div>
-    <div :class="isTimeValid ? 'success' : 'error'" class="field">
-      <div :class="this.dueDate instanceof Date ? '' : 'disabled'" class="ui input left icon">
-        <i class="clock icon"></i>
-        <input
-          data-test-id="input-time"
-          tabindex="-1"
-          @input="validateTime"
-          @blur="!isTimeValid && (time = '00:00') && validateTime()"
-          v-model="time"
-          type="text"
-          placeholder="00:00"
-        />
-      </div>
-    </div>
-  </div>
-  <FadeTransition>
-    <div
-      v-if="active && showCalendar"
-      class="ui raised segment center aligned calendaritem"
-      data-test-id="calendar"
-      draggable="true"
-    >
-      <i data-test-id="dec-month" class="icon angle left floated" @click="decMonth"></i>
-      <span data-test-id="current-month">{{ getCleanDate(selectedMonth) }}</span>
-      <i data-test-id="inc-month" class="icon angle right right floated" @click="incMonth"></i>
-      <table class="ui celled table fixed unstackable">
-        <thead>
-          <tr>
-            <th class="center aligned" v-for="item in computedCalendar.headers">{{ item }}</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="line in computedCalendar.daysGrid">
-            <td
-              v-for="date in line"
-              :data-test-id="date.getMonth() + '-' + date.getDate()"
-              :class="[isSelectable(date) ? 'selectable' : 'disabled', isTodayOrDueDate(date) && 'highlighted']"
-              @click.stop
-              @touchstart.prevent.stop
-              @touchend.stop
-              v-on="isSelectable(date) ? { click: () => setDueDate(date), touchend: () => setDueDate(date) } : {}"
-              class="center aligned"
-            >{{ date.getDate() }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </FadeTransition>
-</template>
-
-
 <script>
-import Calendar from "../calendar"
+import Calendar from "../lib/calendar"
 import dayjs from "dayjs"
 import FadeTransition from "./FadeTransition.vue"
 export default {
@@ -185,6 +105,87 @@ export default {
   }
 }
 </script>
+
+<template>
+  <div class="two fields">
+    <div class="field">
+      <div class="ui left icon input" :class="(showCalendar || dueDate) && 'action'">
+        <i class="calendar icon"></i>
+        <input
+          data-test-id="input-duedate"
+          @touchend.prevent.stop="active && (showCalendar = !showCalendar)"
+          @mouseup="showCalendar = !showCalendar"
+          @keydown.prevent
+          @mousedown.prevent
+          :value="formatedDueDate"
+          type="text"
+          placeholder="Set a reminder..."
+          tabindex="-1"
+        />
+
+        <button
+          v-if="dueDate && active || showCalendar"
+          data-test-id="delete-duedate-button"
+          @click.stop="unSetDueDate"
+          @touchstart.prevent.stop
+          @touchend.stop="unSetDueDate"
+          class="ui icon button"
+        >
+          <i class="delete icon"></i>
+        </button>
+      </div>
+    </div>
+    <div :class="isTimeValid ? 'success' : 'error'" class="field">
+      <div :class="this.dueDate instanceof Date ? '' : 'disabled'" class="ui input left icon">
+        <i class="clock icon"></i>
+        <input
+          data-test-id="input-time"
+          tabindex="-1"
+          @input="validateTime"
+          @blur="!isTimeValid && (time = '00:00') && validateTime()"
+          v-model="time"
+          type="text"
+          placeholder="00:00"
+        />
+      </div>
+    </div>
+  </div>
+  <FadeTransition>
+    <div
+      v-if="active && showCalendar"
+      class="ui raised segment center aligned calendaritem"
+      data-test-id="calendar"
+      draggable="true"
+    >
+      <i data-test-id="dec-month" class="icon angle left floated" @click="decMonth"></i>
+      <span data-test-id="current-month">{{ getCleanDate(selectedMonth) }}</span>
+      <i data-test-id="inc-month" class="icon angle right right floated" @click="incMonth"></i>
+      <table class="ui celled table fixed unstackable">
+        <thead>
+          <tr>
+            <th class="center aligned" v-for="item in computedCalendar.headers">{{ item }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="line in computedCalendar.daysGrid">
+            <td
+              v-for="date in line"
+              :data-test-id="date.getMonth() + '-' + date.getDate()"
+              :class="[isSelectable(date) ? 'selectable' : 'disabled', isTodayOrDueDate(date) && 'highlighted']"
+              @click.stop
+              @touchstart.prevent.stop
+              @touchend.stop
+              v-on="isSelectable(date) ? { click: () => setDueDate(date), touchend: () => setDueDate(date) } : {}"
+              class="center aligned"
+            >{{ date.getDate() }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </FadeTransition>
+</template>
+
+
 <style scoped>
 .calendaritem {
   position: absolute !important;

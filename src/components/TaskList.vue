@@ -1,221 +1,190 @@
 <script>
 import dayjs from "dayjs"
 import TaskCreater from "./TaskCreater.vue"
-import axios from "axios"
 import Warning from "./Warning.vue"
 import FadeTransition from "./FadeTransition.vue"
 import Calendar from "./Calendar.vue"
 import LocalizedFormat from 'dayjs/plugin/localizedFormat'
+import Notification from "./Notification.vue"
+
+import { store } from '../state/state'
+import { httpRequest } from "../lib/httpRequest"
+
+
 
 export default {
-  emits: ['refreshTaskBar', 'error'],
-  inject: ['apiUrl'],
+  emits: ['error'],
   components: {
     TaskCreater,
+    Notification,
     Calendar,
     Warning,
     FadeTransition
   },
   data() {
     return {
-      tasks: [],
+      store,
+
       showCompletedTasks: false,
-      draggedTaskIndex: "",
+      editingTask: false,
+      deletingTask: false,
+
+      taskToDelete: null,
+      taskToEdit: null,
+
+      draggedTaskIndex: -1,
+      hoveredTaskIndex: -1,
       touchTimerStart: 0,
       showTaskMenu: true,
 
       clearTouchTimeout: Object
     }
   },
-  props: {
-    selectedTaskList: Object,
-    taskToUpdate: Object,
-  },
-  watch: {
-    selectedTaskList() {
-      if (this.selectedTaskList.name) {
-        this.tasks = this.selectedTaskList.tasks
-      }
-    },
-    taskToUpdate() {
-      this.updateTask(this.taskToUpdate)
-      for (let task of this.tasks) {
-        if (this.taskToUpdate._id === task._id) {
-          task.dueDate = this.taskToUpdate.dueDate
-          task.completed = this.taskToUpdate.completed
-          break
-        }
-      }
-    }
-  },
-  computed: {
-    computedTasks() {
-      return this.tasks.filter(task => task.completed === this.showCompletedTasks)
-    }
-  },
   methods: {
-    cancelEditTask(task) {
-      task.selected = false
-      task.edit = false
-      task.dueDate = task.origDueDate
-      task.editedBody = task.body
+    cancelEditTask() {
+      this.editingTask = false
+      this.taskToEdit = null
     },
+
+    beforeEditingTask(task) {
+      this.editingTask = true
+      this.taskToEdit = { ...task }
+    },
+
+    cancelDeleteTask() {
+      this.deletingTask = false
+      this.taskToDelete = null
+    },
+
+    showTaskBody(task) {
+      if (this.taskToEdit) {
+        return task._id !== this.taskToEdit._id
+      } else if (this.taskToDelete) {
+        return task._id !== this.taskToDelete._id
+      }
+      return true
+    },
+
     formatedDate(date) {
       dayjs.extend(LocalizedFormat)
       return dayjs(date).format("LLL")
     },
-    setDueDateHandler(date, task) {
-      if (task.origDueDate === undefined) {
-        task.origDueDate = task.dueDate
-      }
-      task.dueDate = date
-    },
+
     setErrorMessage(errorMessage) {
+      // ??
       this.$emit('error', errorMessage)
     },
+
     toggleTaskCompleted(task) {
-      task.completed = !task.completed
-      this.updateTask(task)
+      this.taskToEdit = { ...task }
+      this.taskToEdit.completed = !this.taskToEdit.completed
+      this.updateTask()
     },
-    taskDeleteHandler(task) {
-      /* mark a task a task as potentially deleted
+
+    beforeDeletingTask(task) {
+      /* mark task as potentially deleted
       warning message is triggered then user can confirms if task should really be deleted */
-      task.selected = false
-      task.delete = true
+      this.deletingTask = true
+      this.taskToDelete = { ...task }
     },
 
-    pushTaskTop(index) {
-      let taskToPush = this.tasks[index]
-      taskToPush.selected = false
-      this.tasks.splice(index, 1)
-      this.tasks.unshift(taskToPush)
-      this.updateTaskOrder()
+    async pushTaskToTheTop(index) {
+      this.draggedTaskIndex = index
+      this.hoveredTaskIndex = 0
+      await this.updateTaskOrder()
+      this.resetDragData()
     },
 
-    newTaskCreatedHandler(data) {
-      this.$emit('refreshTaskBar')
-      this.tasks.unshift(data)
-    },
     async updateTaskOrder() {
       try {
         const accessToken = await this.$auth0.getAccessTokenSilently();
-        await axios.patch("https://" + this.apiUrl + "/updateTaskOrder",
+        await httpRequest(accessToken,
+          "patch",
+          "/updateTaskOrder",
           {
-            name: this.selectedTaskList.name,
-            tasks: this.tasks.map(task => task._id)
+            name: this.store.selectedProject.name,
+            tasks: this.store.selectedProject.tasks.map(task => task._id)
           },
-          {
-            headers: {
-              "Authorization": `Bearer ${accessToken}`,
-              "Content-type": "application/json; charset=UTF-8"
-            }
-          });
+        )
+        this.store.reOrderSelectedProject(this.draggedTaskIndex, this.hoveredTaskIndex)
       } catch (e) {
         console.log(e)
       }
     },
-    async deleteTask(task) {
+
+    async deleteTask() {
       try {
         const accessToken = await this.$auth0.getAccessTokenSilently();
-        await axios.delete("https://" + this.apiUrl + "/deleteTask", {
-          data: {
-            _id: task._id
+        await httpRequest(accessToken,
+          "delete",
+          "/deleteTask",
+          {
+            _id: this.taskToDelete._id
           },
-          headers: {
-            "Authorization": `Bearer ${accessToken}`,
-            "Content-type": "application/json; charset=UTF-8"
-          },
-        })
-        this.tasks = this.tasks.filter(t => t != task)
-        this.$emit('refreshTaskBar')
+        )
+        this.store.deleteTask(this.taskToDelete)
+        this.deletingTask = false
+        this.taskToDelete = null
       } catch (e) {
         console.log(e)
       }
     },
-    async updateTask(task) {
-      if (task.editedBody) {
-        task.body = task.editedBody
-      }
+
+    async updateTask(index) {
       try {
         const accessToken = await this.$auth0.getAccessTokenSilently();
-        await axios.patch("https://" + this.apiUrl + "/updateTask",
-          {
-            _id: task._id,
-            title: task.title,
-            body: task.body,
-            dueDate: task.dueDate,
-            completed: task.completed
-          },
-          {
-            headers: {
-              "Authorization": `Bearer ${accessToken}`,
-              "Content-type": "application/json; charset=UTF-8"
-            }
-          });
-        task.selected = false
-        task.edit = false
-        task.origDueDate = task.dueDate
-        this.$emit('refreshTaskBar')
+        await httpRequest(accessToken,
+          "patch",
+          "/updateTask",
+          this.taskToEdit,
+        )
+        this.store.updateTask(this.taskToEdit, index)
       } catch (e) {
         console.log(e)
+      } finally {
+        this.taskToEdit = null
+        this.editingTask = false
       }
     },
+
     handleDragEnter(index) {
-      this.tasks[index].isDragTarget = true
+      this.hoveredTaskIndex = index
     },
+
     handleDragStart(index) {
       this.draggedTaskIndex = index
+      this.hoveredTaskIndex = index
     },
-    unSetAllButSelected(index) {
-      this.tasks = this.tasks.map((t, i) => {
-        if (i !== index) t.selected = false
-        return t
-      })
+
+    resetDragData() {
+      this.draggedTaskIndex = -1
+      this.hoveredTaskIndex = -1
     },
+
+    async handleDragEnd() {
+      if ((this.draggedTaskIndex !== -1 && this.hoveredTaskIndex !== -1)
+        && (this.draggedTaskIndex !== this.hoveredTaskIndex)) {
+        await this.updateTaskOrder()
+      }
+      this.resetDragData()
+    },
+
     handleTouchStart(index) {
       // Only shows menu for 4sec if user touches the task.
       this.showTaskMenu = true
       this.clearTouchTimeout && clearTimeout(this.clearTouchTimeout)
       this.clearTouchTimeout = setTimeout(() => this.showTaskMenu = false, 4000)
 
-      this.unSetAllButSelected(index)
-      if (this.draggedTaskIndex !== '') {
+      if (this.draggedTaskIndex !== -1) {
         this.handleDragEnter(index)
       }
       let now = new Date()
       this.touchTimerStart = now.valueOf()
     },
-    unSetDragTarget() {
-      this.tasks = this.tasks.map(t => {
-        t.isDragTarget = false
-        return t
-      })
-    },
-    handleDropOver(index) {
-      console.log(index)
-      if (this.draggedTaskIndex === '') {
-        this.unSetDragTarget()
-        return
-      }
-      if (this.draggedTaskIndex < index) index += 1
-      if (this.draggedTaskIndex != index) {
-        let taskToInsert = this.tasks[this.draggedTaskIndex]
-        let arr1 = this.tasks.slice(0, index).filter(task => task !== taskToInsert)
-        arr1.push(taskToInsert)
-        let arr2 = this.tasks.slice(index,).filter(task => task !== taskToInsert)
-        console.log(this.tasks)
-        this.tasks = arr1.concat(arr2)
-        console.log(this.tasks)
-        this.updateTaskOrder()
-      }
-    },
-    handleDragEnd() {
-      this.unSetDragTarget()
-      this.draggedTaskIndex = ""
-    },
+
     handleTouchMove() {
       this.showTaskMenu = false
-      // If toucheMove event is fired then touchTimerStart is set in the future so it won't trigger move tasks functionality.
+      // If touchmove event is fired then touchTimerStart is set in the future so it won't trigger move tasks functionality.
       this.touchTimerStart = new Date().setFullYear(3000)
     },
     handleTouchEnd(index) {
@@ -224,87 +193,105 @@ export default {
       let minTouchDuration = 500
       let now = new Date()
       let touchDuration = now.valueOf() - this.touchTimerStart
-      if (touchDuration >= minTouchDuration) this.handleDragStart(index)
-      else if (this.tasks[index].isDragTarget !== true) {
-        this.tasks[index].selected = true
-      } else if (this.tasks[index].isDragTarget === true) {
-        this.handleDropOver(index)
+      if (touchDuration >= minTouchDuration) {
+        this.handleDragStart(index)
+      } else if (this.hoveredTaskIndex === index) {
         this.handleDragEnd()
+      } else {
+        this.store.setSelectedTask(index)
       }
       this.touchTimerStart = 0
     },
-  },
+
+    markNotifiedTaskAsCompleted(task) {
+      this.taskToEdit = { ...task }
+      this.taskToEdit.completed = true
+      this.store.deleteNotification(task)
+      this.updateTask()
+    },
+
+    dismissReminderOfNotifiedTask(task) {
+      this.taskToEdit = { ...task }
+      this.taskToEdit.dueDate = null
+      this.store.deleteNotification(task)
+      this.updateTask()
+    }
+  }
 }
 </script>
 
 <template>
-  <div v-if="selectedTaskList.name" class="ui fluid container">
+  <div v-if="store.selectedProject" class="ui fluid container">
+    <Notification
+      @markTaskAsCompleted="markNotifiedTaskAsCompleted(task)"
+      @dismissTaskReminder="dismissReminderOfNotifiedTask
+      (task)"
+      v-for="task in store.notifications"
+      :task="task"
+    ></Notification>
+
     <div class="ui segments">
       <TaskCreater
-        :selectedTaskList="selectedTaskList.name"
         @error="setErrorMessage"
-        @newTaskCreated="newTaskCreatedHandler"
-        @toggleShowCompleted="showCompletedTasks = !showCompletedTasks"
+        @toggle-show-completed="showCompletedTasks = !showCompletedTasks"
       ></TaskCreater>
       <TransitionGroup name="list">
         <div
           class="ui segment attached task-wrapper"
-          v-for="(task,index) in tasks"
+          v-for="(task,index) in store.selectedProject.tasks"
           @dragover.prevent
-          @keydown.enter="task.selected = !task.selected"
+          @drop.prevent
+          @keydown.enter="store.setSelectedTask(index)"
+          @click="store.setSelectedTask(index)"
           @dragstart="handleDragStart(index)"
-          @drop="handleDropOver(index)"
           @dragenter="handleDragEnter(index)"
           @dragend="handleDragEnd"
-          @click="task.selected = true"
-          @mouseleave="task.selected = false"
-          @dragexit="task.isDragTarget = false"
+          @mouseleave="store.setSelectedTask(-1)"
           @touchstart="handleTouchStart(index)"
           @touchend.prevent="handleTouchEnd(index)"
           @touchmove="handleTouchMove()"
-          :style="[task.isDragTarget ? 'border-top: solid' : 'border-top: none !important', 'z-index = -1']"
+          :style="[hoveredTaskIndex === index ? 'border-top: solid' : 'border-top: none !important', 'z-index = -1']"
           :key="index"
-          :class="[task.selected && 'taskelement-active', task.isDragTarget ? 'horizontal-shake' : '', task.selected ? '' : 'secondary',]"
-          :draggable="task.draggable"
-          tabindex="0"
+          :class="[store.selectedTask === task && 'taskelement-active',
+          hoveredTaskIndex === index ? 'horizontal-shake' : '', store.selectedTask === task ? '' : 'secondary',]"
+          :draggable="!editingTask"
+          v-show="task.completed === showCompletedTasks"
         >
           <div
             :class="task.completed ? 'completed' : 'not-completed'"
             :data-test-id="'taskHeader-' + index"
             class="ui segment vertically attached fitted taskheader"
             @click.prevent
-            :style="task.draggable && 'cursor: grab'"
             style="display: flex; justify-content: space-between;"
             @touchstart.prevent.stop="handleTouchStart(index)"
-            @mouseenter="task.draggable = true"
-            @mouseleave="task.draggable = false"
           >
             <span style>{{ task.title && 'Title: ' }}{{ task.title }}</span>
             <span style>Created on: {{ formatedDate(task.createdAt) }}</span>
           </div>
           <div
             :data-test-id="'taskBody-' + index"
-            :class="task.selected && 'taskelement-active'"
+            :class="store.selectedTask === task && 'taskelement-active'"
             class="ui clearing attached segment taskelement"
           >
             <FadeTransition>
               <div
                 class="ui right floated borderless menu"
                 style="border: 0px !important"
-                v-if="task.selected && !task.edit && !task.delete && showTaskMenu"
+                v-if="store.selectedTask === task && !editingTask && !deletingTask && showTaskMenu"
                 z-index="100"
               >
                 <a
                   tabindex="0"
                   data-test-id="markAsCompletedButton"
                   class="ui icon item"
-                  title="Mark this task as completed."
+                  :title="task.completed ? 'Mark this task as not completed.' :
+                  'Mark this task as completed'"
                   @mouseup.stop="toggleTaskCompleted(task)"
                   @keydown.enter="toggleTaskCompleted(task)"
+                  @touchend.stop="toggleTaskCompleted(task)"
                   @click.prevent.stop
                   @touchstart.prevent.stop
                   @touchmove.prevent
-                  @touchend.stop="toggleTaskCompleted(task)"
                 >
                   <i :class="task.completed ? 'redo icon' : 'calendar check icon'"></i>
                 </a>
@@ -313,12 +300,12 @@ export default {
                   title="Delete this task."
                   data-test-id="deleteTaskButton"
                   class="ui icon item"
-                  @mouseup.stop="taskDeleteHandler(task)"
-                  @keydown.enter="taskDeleteHandler(task)"
+                  @mouseup.stop="beforeDeletingTask(task)"
+                  @keydown.enter="beforeDeletingTask(task)"
+                  @touchend.stop="beforeDeletingTask(task)"
                   @click.prevent.stop
                   @touchstart.prevent.stop
                   @touchmove.prevent
-                  @touchend.stop="taskDeleteHandler(task)"
                 >
                   <i class="calendar minus icon"></i>
                 </a>
@@ -328,15 +315,12 @@ export default {
                   data-test-id="editTaskButton"
                   title="Edit this task."
                   class="ui icon item"
-                  @mouseup.stop="task.edit = !task.edit;
-                  task.editedBody = task.body"
-                  @keydown.enter="task.edit = !task.edit;
-                  task.editedBody = task.body"
+                  @mouseup.stop="beforeEditingTask(task)"
+                  @keydown.enter="beforeEditingTask(task)"
+                  @touchend.stop="beforeEditingTask(task)"
                   @click.prevent.stop
                   @touchstart.prevent.stop
                   @touchmove.prevent
-                  @touchend.stop="task.edit = !task.edit;
-                  task.editedBody = task.body"
                 >
                   <i class="edit icon"></i>
                 </a>
@@ -345,37 +329,36 @@ export default {
                   data-test-id="pushTopButton"
                   title="Push this task to the top."
                   class="ui icon item"
-                  @mouseup.stop="pushTaskTop(index)"
-                  @keydown.enter="pushTaskTop(index)"
+                  @mouseup.stop="pushTaskToTheTop(index)"
+                  @keydown.enter="pushTaskToTheTop(index)"
+                  @touchend.stop="pushTaskToTheTop(index)"
                   @click.prevent.stop
                   @touchstart.prevent.stop
                   @touchmove.prevent
-                  @touchend.stop="pushTaskTop(index)"
                 >
                   <i class="hand point up outline icon"></i>
                 </a>
               </div>
             </FadeTransition>
-            <span
-              class
-              v-if="!task.edit && !task.delete"
-              style="white-space: pre-line;"
-            >{{ task.body }}</span>
+            <span class v-if="showTaskBody(task)" style="white-space: pre-line;">{{ task.body }}</span>
             <FadeTransition>
-              <span v-if="task.delete" style="white-space: pre-line;">
+              <span
+                v-if="deletingTask && taskToDelete._id === task._id"
+                style="white-space: pre-line;"
+              >
                 <Warning
-                  @yes="deleteTask(task)"
-                  @no="task.delete = false"
+                  @yes="deleteTask"
+                  @no="cancelDeleteTask"
                   :message="'Are you sure you want to delete this task ?'"
                 ></Warning>
               </span>
             </FadeTransition>
 
-            <div class="ui container" v-if="task.edit">
+            <div class="ui container" v-if="editingTask && taskToEdit._id === task._id">
               <div class="ui form">
                 <div class="field">
                   <input
-                    v-model="task.title"
+                    v-model="taskToEdit.title"
                     @touchstart.self="(event) => event.target.focus()"
                     @blur.self="(event) => event.target.blur()"
                     placeholder="Give a title to this task..."
@@ -388,27 +371,25 @@ export default {
                     @blur.self="(event) => event.target.blur()"
                     data-test-id="editInputBox"
                     rows="6"
-                    v-model="task.editedBody"
+                    v-model="taskToEdit.body"
                   >
           {{ task.body }}
           </textarea>
                 </div>
                 <Calendar
-                  :active="task.selected"
-                  :injectedDueDate="task.dueDate"
-                  @dueDateSet="(date) => {
-                    setDueDateHandler(date, task)
-                  }"
+                  :active="store.selectedTask === task"
+                  :injectedDueDate="taskToEdit.dueDate"
+                  @dueDateSet="date => taskToEdit.dueDate = date"
                 ></Calendar>
 
                 <div v-if="task.body" class="ui buttons">
                   <button
                     tabindex="0"
                     data-test-id="cancelEditButton"
-                    @click.stop="cancelEditTask(task)"
+                    @click.stop="cancelEditTask"
                     @touchstart.prevent.stop
-                    @touchend.stop="cancelEditTask(task)"
-                    @keydown.enter="cancelEditTask(task)"
+                    @touchend.stop="cancelEditTask"
+                    @keydown.enter="cancelEditTask"
                     class="ui button"
                   >Cancel</button>
                   <div class="or"></div>
@@ -416,10 +397,10 @@ export default {
                     tabindex="0"
                     data-test-id="confirmEditButton"
                     class="ui button"
-                    @click.stop="updateTask(task)"
                     @touchstart.prevent.stop
-                    @touchend.stop="updateTask(task)"
-                    @keydown.enter="updateTask(task)"
+                    @click.stop="updateTask(index)"
+                    @touchend.stop="updateTask(index)"
+                    @keydown.enter="updateTask(index)"
                   >Save</button>
                 </div>
               </div>
