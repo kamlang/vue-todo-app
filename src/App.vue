@@ -16,14 +16,8 @@ export default {
   data() {
     return {
       store,
-      isLoading: this.$auth0.isLoading,
       isAuthenticated: this.$auth0.isAuthenticated,
       errorMessage: "",
-    }
-  },
-  provide() {
-    return {
-      apiUrl: "192.168.1.6:8443"
     }
   },
   methods: {
@@ -36,13 +30,17 @@ export default {
 
 <template>
   <div class="ui fluid main container">
-    <TaskBar @error="setErrorMessage"></TaskBar>
-    <div class="wrapper">
-      <Loading v-if="isLoading"></Loading>
-      <Unauthenticated v-if="!isLoading && !isAuthenticated"></Unauthenticated>
-      <Error v-if="errorMessage" @closed="errorMessage = ''" :errorMessage="errorMessage"></Error>
-      <TaskList @error="setErrorMessage" v-if="isAuthenticated && !isLoading" />
-    </div>
+    <Suspense>
+      <TaskBar @error="setErrorMessage"></TaskBar>
+      <div class="wrapper">
+        <Unauthenticated v-if="!isAuthenticated"></Unauthenticated>
+        <Error v-if="errorMessage" @closed="errorMessage = ''" :errorMessage="errorMessage"></Error>
+        <TaskList @error="setErrorMessage" v-if="isAuthenticated" />
+      </div>
+      <template #fallback>
+        <Loading></Loading>
+      </template>
+    </Suspense>
   </div>
 </template>
 <style scoped>
@@ -51,9 +49,8 @@ export default {
   overflow: auto;
   background: rgb(27, 28, 29);
   background: linear-gradient(
-    180deg,
-    rgba(27, 28, 29, 1) 0%,
-    rgba(36, 116, 116, 1) 100%
+    rgba(27, 28, 29, 1) 100%,
+    rgba(36, 116, 116, 1) 0%
   );
 }
 .wrapper {
