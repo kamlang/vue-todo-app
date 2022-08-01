@@ -42,8 +42,9 @@ afterEach(async () => {
 
 describe("", () => {
   it("Testing rendering of user data and creation of a task list", async () => {
+
     /*  User arrives on the main page his data are supposed to be populated.
-     User has two tasklist named "project1" with a task "bodyTest" and "TaskList2" 
+     User has two projects named "project1" with a task "bodyTest" and "TaskList2" 
      Meaning his task list has to include both.
      And he must have a task "bodyTest" rendered on project1.
      Then he creates a new task list named "taskTest", 
@@ -87,6 +88,7 @@ describe("", () => {
     /* A user has two projects project1 and project2, project1 is selected. 
     He clicks on delete button choose "No" at warning message so project1 
     should still exists. Then he clicks "Yes" project1 should have been deleted */
+
     const wrapper = mount(App)
     await flushPromises()
 
@@ -110,11 +112,10 @@ describe("", () => {
     expect(projectsArray[0].text()).not.contain("project1 (2)")
   })
   it("rename project", async () => {
-    /* User double click a taskname to rename it an inputbox should appear.
+    /* User double click a project tab to rename it an inputbox should appear.
     First time it doesn't enter a new name and cancel it input box should disappear. 
     Next he clicks again and enter "project3" as new name.
-    name should be updated in task list bar. Then he tries to rename project2 to project3
-    which should display and error message as two task list can't have the same name.
+    Project bar should be updated.
     */
     const wrapper = mount(App)
     await flushPromises()
@@ -143,12 +144,10 @@ describe("", () => {
     expect(projectsArray.at(1).text()).toBe("project2 (1)")
   })
   it("rename and create a project with already exisiting names.", async () => {
-    /* User tries to rename a task list with a name which already exists
+    /* User tries to rename a project with a name that already exists.
     Then he tries to create a new one with an already existing name, 
     an error message should be displayed and user should be able to close it using
-    the close icon. Task list name in the task bar should remain unchanged. */
-
-    // mocking http error returned by the server.
+    the close icon. Projects name should remain unchanged. */
 
     const wrapper = mount(App)
     await flushPromises()
@@ -158,6 +157,7 @@ describe("", () => {
     expect(inputNewTaskName.exists()).toBe(true)
     expect(wrapper.find('[data-test-id=confirmNewName]').exists()).toBe(false)
 
+    // mocking http error returned by the server.
     httpRequest.mockImplementation(() =>
       new Promise((_, rej) => rej('error'))
     )
@@ -276,6 +276,7 @@ describe("", () => {
     await firstTaskHeader.trigger('dragenter')
     await firstTaskHeader.trigger('dragend')
 
+    firstTask = wrapper.find('[data-test-id=taskBody-0]')
     expect(firstTask.text()).toEqual("bodyTest2")
     expect(httpRequest).toHaveBeenCalledTimes(2)
     // check that request has been done with appropriate parameters
@@ -307,9 +308,10 @@ describe("", () => {
   })
 
   it('Mark a task as completed', async () => {
-    /* User has two tasks he marks one as completed, so it should be removed.
+    /* User has two tasks he marks one as completed, so it should not be visible anymore.
     Then he clicks on the "toggle show completed" button he should see it there.
     Then he put it back as not completed, task should appear in the "not completed" list again.*/
+
     const wrapper = mount(App)
     await flushPromises()
 
