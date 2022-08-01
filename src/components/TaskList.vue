@@ -10,8 +10,6 @@ import Notification from "./Notification.vue"
 import { store } from '../state/state'
 import { httpRequest } from "../lib/httpRequest"
 
-
-
 export default {
   emits: ['error'],
   components: {
@@ -251,7 +249,7 @@ export default {
           @touchend.prevent="handleTouchEnd(index)"
           @touchmove="handleTouchMove()"
           :style="[hoveredTaskIndex === index ? 'border-top: solid' : 'border-top: none !important', 'z-index = -1']"
-          :key="index"
+          :key="task._id"
           :class="[store.selectedTask === task && 'taskelement-active',
           hoveredTaskIndex === index ? 'horizontal-shake' : '', store.selectedTask === task ? '' : 'secondary',]"
           :draggable="!editingTask"
