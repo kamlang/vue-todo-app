@@ -410,8 +410,9 @@ export default {
     </div>
   </div>
   <FadeTransition>
-    <div style="margin-bottom: 16px;" v-if="projectToDelete">
+    <div class="warning-wrapper">
       <Warning
+        v-if="projectToDelete"
         @no="resetProjectToDelete"
         @yes="deleteProject"
         :message="'Are you sure you want to delete ' + projectToDelete.name + '?'"
@@ -429,6 +430,12 @@ export default {
   min-height: 50px;
   overflow-x: hidden !important;
   overflow-y: hidden !important;
+}
+.warning-wrapper {
+  margin-bottom: 1em;
+  max-width: min(95%, 900px);
+  margin-left: auto;
+  margin-right: auto;
 }
 .flex-wrapper {
   display: flex;
