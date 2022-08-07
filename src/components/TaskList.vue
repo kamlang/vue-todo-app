@@ -24,11 +24,11 @@ export default {
       store,
 
       showCompletedTasks: false,
+      taskToEdit: null,
       editingTask: false,
       deletingTask: false,
-
       taskToDelete: null,
-      taskToEdit: null,
+      areTasksDraggable: true,
 
       draggedTaskIndex: -1,
       hoveredTaskIndex: -1,
@@ -69,7 +69,6 @@ export default {
     },
 
     setErrorMessage(errorMessage) {
-      // ??
       this.$emit('error', errorMessage)
     },
 
@@ -213,7 +212,11 @@ export default {
       this.taskToEdit.dueDate = null
       this.store.deleteNotification(task)
       this.updateTask()
-    }
+    },
+
+    toggleDraggable() {
+      this.areTasksDraggable = !this.areTasksDraggable
+    },
   }
 }
 </script>
@@ -245,14 +248,14 @@ export default {
           @dragenter="handleDragEnter(index)"
           @dragend="handleDragEnd"
           @mouseleave="store.setSelectedTask(-1)"
-          @touchstart="handleTouchStart(index)"
+          @touchstart.prevent="handleTouchStart(index)"
           @touchend.prevent="handleTouchEnd(index)"
           @touchmove="handleTouchMove()"
           :style="[hoveredTaskIndex === index ? 'border-top: solid' : 'border-top: none !important', 'z-index = -1']"
           :key="task._id"
           :class="[store.selectedTask === task && 'taskelement-active',
           hoveredTaskIndex === index ? 'horizontal-shake' : '', store.selectedTask === task ? '' : 'secondary',]"
-          :draggable="!editingTask"
+          :draggable="!editingTask && areTasksDraggable"
           v-show="task.completed === showCompletedTasks"
         >
           <div
@@ -338,7 +341,12 @@ export default {
                 </a>
               </div>
             </FadeTransition>
-            <span class v-if="showTaskBody(task)" style="white-space: pre-line;">{{ task.body }}</span>
+            <span
+              v-if="showTaskBody(task)"
+              @mouseenter="toggleDraggable"
+              @mouseleave="toggleDraggable"
+              style="white-space: pre-line;"
+            >{{ task.body }}</span>
             <FadeTransition>
               <span
                 v-if="deletingTask && taskToDelete._id === task._id"
