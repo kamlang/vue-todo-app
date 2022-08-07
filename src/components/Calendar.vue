@@ -1,5 +1,5 @@
 <script>
-import Calendar from "../lib/calendar"
+import Calendar from "calendar/dist/calendar"
 import dayjs from "dayjs"
 import FadeTransition from "./FadeTransition.vue"
 export default {
@@ -38,6 +38,7 @@ export default {
         this.isTimeValid = false
       }
     },
+
     _setDueDateTime() {
       let hours = this.time.split(':')[0]
       let minutes = this.time.split(':')[1]
@@ -45,19 +46,30 @@ export default {
       this.dueDate.setMinutes(minutes)
       this.setDueDate(this.dueDate)
     },
+
     setDueDate(selectedDate) {
-      this.dueDate = selectedDate
+      this.dueDate = new Date(selectedDate)
       this.$emit('dueDateSet', this.dueDate.toString())
       this.showCalendar = false
     },
+
     unSetDueDate() {
       this.dueDate = ""
       this.time = "00:00"
       this.showCalendar = false
       this.$emit('dueDateSet', "")
     },
-    getCleanDate(date) {
+
+    getFormatedMonthYear() {
+      let date = this.calendar.getCurrentDate()
       return dayjs(date).format("MMMM YY")
+    },
+
+    isSameDay(date1, date2) {
+      return date1.getDate() === date2.getDate() &&
+        date1.getMonth() === date2.getMonth() &&
+        date1.getFullYear() === date2.getFullYear() ?
+        true : false
     },
 
     isTodayOrDueDate(date) {
@@ -65,26 +77,30 @@ export default {
       // if dueDate is set then it's highlighted.
       let today = new Date()
       return this.dueDate instanceof Date ?
-        this.calendar.isSameDay(this.dueDate, date) :
-        this.calendar.isSameDay(today, date)
+        this.isSameDay(this.dueDate, date) :
+        this.isSameDay(today, date)
     },
+
     isSelectable(date) {
       // A date is selectable only if it's in the future and belongs to the current month.
       let today = new Date()
-      return (this.calendar.isSameDay(today, date) ||
+      let currentCalendarDate = this.calendar.getCurrentDate()
+      return (this.isSameDay(today, date) ||
         today.getTime() <= date.getTime()) &&
-        date.getMonth() === this.selectedMonth.getMonth() ?
+        date.getMonth() === currentCalendarDate.getMonth() ?
         true : false
     },
 
-    incMonth() {
-      this.calendar.incMonth()
+    increaseMonth() {
+      this.calendar.increaseMonth()
     },
-    decMonth() {
-      this.calendar.decMonth()
+
+    decreaseMonth() {
+      this.calendar.decreaseMonth()
     },
   },
   computed: {
+
     formatedDueDate() {
       if (this.injectedDueDate) {
         this.dueDate = new Date(this.injectedDueDate)
@@ -94,13 +110,11 @@ export default {
         return ""
       }
     },
-    selectedMonth() {
-      return this.calendar.getDate()
-    },
 
     computedCalendar() {
-      this.calendar.create()
-      return { headers: this.calendar.headers, daysGrid: this.calendar.daysGrid }
+      let currentMonth = this.calendar.getCurrentMonth()
+      let [daysInitial, ...daysOfMonth] = currentMonth
+      return { daysInitial, daysOfMonth }
     }
   }
 }
@@ -157,17 +171,17 @@ export default {
       data-test-id="calendar"
       draggable="true"
     >
-      <i data-test-id="dec-month" class="icon angle left floated" @click="decMonth"></i>
-      <span data-test-id="current-month">{{ getCleanDate(selectedMonth) }}</span>
-      <i data-test-id="inc-month" class="icon angle right right floated" @click="incMonth"></i>
+      <i data-test-id="dec-month" class="icon angle left floated" @click="decreaseMonth"></i>
+      <span data-test-id="current-month">{{ getFormatedMonthYear() }}</span>
+      <i data-test-id="inc-month" class="icon angle right right floated" @click="increaseMonth"></i>
       <table class="ui celled table fixed unstackable">
         <thead>
           <tr>
-            <th class="center aligned" v-for="item in computedCalendar.headers">{{ item }}</th>
+            <th class="center aligned" v-for="item in computedCalendar.daysInitial">{{ item }}</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="line in computedCalendar.daysGrid">
+          <tr v-for="line in computedCalendar.daysOfMonth">
             <td
               v-for="date in line"
               :data-test-id="date.getMonth() + '-' + date.getDate()"
