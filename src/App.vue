@@ -17,6 +17,7 @@ export default {
     return {
       store,
       isAuthenticated: this.$auth0.isAuthenticated,
+      isLoading: this.$auth0.isLoading,
       errorMessage: "",
     }
   },
@@ -29,18 +30,14 @@ export default {
 </script>
 
 <template>
-  <div class="ui fluid main container">
-    <Suspense>
-      <TaskBar @error="setErrorMessage"></TaskBar>
-      <div class="wrapper">
-        <Unauthenticated v-if="!isAuthenticated"></Unauthenticated>
-        <Error v-if="errorMessage" @closed="errorMessage = ''" :errorMessage="errorMessage"></Error>
-        <TaskList @error="setErrorMessage" v-if="isAuthenticated" />
-      </div>
-      <template #fallback>
-        <Loading></Loading>
-      </template>
-    </Suspense>
+  <div class="main container">
+    <TaskBar @error="setErrorMessage"></TaskBar>
+    <div class="wrapper">
+      <Loading v-if="isLoading"></Loading>
+      <Unauthenticated v-if="!isAuthenticated && !isLoading"></Unauthenticated>
+      <Error v-if="errorMessage" @closed="errorMessage = ''" :errorMessage="errorMessage"></Error>
+      <TaskList @error="setErrorMessage" v-if="isAuthenticated" />
+    </div>
   </div>
 </template>
 <style scoped>
@@ -49,8 +46,9 @@ export default {
   overflow: auto;
   background: rgb(27, 28, 29);
   background: linear-gradient(
-    rgba(27, 28, 29, 1) 100%,
-    rgba(36, 116, 116, 1) 0%
+    180deg,
+    rgba(27, 28, 29, 1) 0%,
+    rgba(36, 116, 116, 1) 100%
   );
 }
 .wrapper {
