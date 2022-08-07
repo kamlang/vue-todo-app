@@ -24,6 +24,7 @@ export default {
       selectedProject: Object
     }
   },
+
   watch: {
 
     selectedProject() {
@@ -69,6 +70,7 @@ export default {
         this.newTaskBody = ""
         this.newTaskDueDate = ""
         this.newTaskTitle = ""
+        this.showTaskForm = false
       } catch (e) {
         console.log(e)
       }
@@ -79,7 +81,7 @@ export default {
 
 <template>
   <div
-    class="ui segment"
+    class="ui segment secondary"
     data-test-id="task-creater"
     tabindex="0"
     @keydown.space="showTaskForm = !showTaskForm"
@@ -98,7 +100,10 @@ export default {
       <label></label>
     </div>
     <i v-if="showTaskForm" class="angle up icon"></i>
-    <i v-else class="angle down icon"></i>
+    <div v-else>
+      Add a new task
+      <i class="angle down icon"></i>
+    </div>
   </div>
 
   <FadeTransition>
