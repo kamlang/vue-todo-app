@@ -153,24 +153,22 @@ describe("", () => {
     await flushPromises()
     let projectsArray = wrapper.findAll('[data-test-id=projectName]')
     await projectsArray[0].trigger("dblclick")
-    let inputNewTaskName = wrapper.find('[data-test-id=inputNewTaskName]')
-    expect(inputNewTaskName.exists()).toBe(true)
+    let inputNewTaskName = wrapper.get('[data-test-id=inputNewTaskName]')
     expect(wrapper.find('[data-test-id=confirmNewName]').exists()).toBe(false)
 
     // mocking http error returned by the server.
     httpRequest.mockImplementation(() =>
-      new Promise((_, rej) => rej('error'))
+      new Promise((_, rej) => rej({ message: 'error' }))
     )
 
-    await inputNewTaskName.setValue("project2 (1)")
-    let confirmNewNameButton = wrapper.find('[data-test-id=confirmNewName]')
-    expect(confirmNewNameButton.exists()).toBe(true)
+    await inputNewTaskName.setValue("project2")
+    let confirmNewNameButton = wrapper.get('[data-test-id=confirmNewName]')
     await confirmNewNameButton.trigger('click')
     await flushPromises()
     // change for called with
     expect(httpRequest).toHaveBeenCalledTimes(2)
 
-    let errorMessageClose = wrapper.find('[data-test-id=errorMessageClose]')
+    let errorMessageClose = wrapper.get('[data-test-id=errorMessageClose]')
     await errorMessageClose.trigger('click')
     expect(wrapper.find('[data-test-id=errorMessage]').exists()).toBe(false)
 
@@ -182,7 +180,7 @@ describe("", () => {
     await createTaskButton.trigger("click")
 
     const createTaskInput = wrapper.get('[data-test-id=createNewTaskListInput]')
-    await createTaskInput.setValue("project1 (2)")
+    await createTaskInput.setValue("project1")
 
     expect(confirmNewNameButton.exists()).toBe(true)
     await createTaskInput.trigger('keydown.enter')
@@ -341,8 +339,10 @@ describe("", () => {
     expect(secondTask.isVisible()).toBe(false)
   })
   it('edit duedate of a task using calendar component', async () => {
+
     /* A user chooses to edit a task. Then he clicks on the date input field,
-  calendar should shows up. User select a date in the past this should not be taken into account. Then he chooses a date in the future (delete button should appear, if clicked due date should be set back to "") Then he tries to set a time which is not valid.
+  calendar should shows up. User select a date in the past this should not be taken into account.
+  Then he chooses a date in the future (delete button should appear, if clicked due date should be set back to "") Then he tries to set a time which is not valid.
   Time value should be reset to 00:00. Then he sets a valid time.
   Then he clicks cancel button, changes should do not have been updated when user tries to edit the task again.
   Then he presses the editTask button once again and choose a valid date and time and press save. We're checking if the updateTask api request include the correct due date.
@@ -443,7 +443,8 @@ describe("", () => {
     vi.useRealTimers()
   })
   it('Testing notification clicking mark as completed', async () => {
-    /* In project1 a user has a task with an anterior duedate, notifictation should be triggerd then he clicks marked as completed and task should be marked as completed and should not be visible anymore.
+    /* In project1 a user has a task with an anterior duedate, notifictation should be triggered 
+    Then he clicks marked as completed and task should be marked as completed and should not be visible anymore.
     */
     const date = new Date(Date.now() - 10000).toString()
     httpRequest = vi.fn()
