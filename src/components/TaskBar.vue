@@ -18,6 +18,7 @@ export default {
       store,
       auth0User: this.$auth0.user,
       isAuthenticated: this.$auth0.isAuthenticated,
+      isLoading: false,
 
       creatingNewProject: false,
       renamingNewProject: false,
@@ -45,6 +46,13 @@ export default {
       immediate: true
     },
   },
+
+  computed: {
+    numberOfProjects() {
+      return this.store.projects.length
+    }
+  },
+
   created() {
     window.addEventListener("resize", this.handleResize);
   },
@@ -60,6 +68,7 @@ export default {
   methods: {
 
     async getProjects() {
+      this.isLoading = true
       try {
         const accessToken = await this.$auth0.getAccessTokenSilently();
         const response = await httpRequest(accessToken,
@@ -69,6 +78,7 @@ export default {
       } catch (e) {
         console.log(e)
       }
+      this.isLoading = false
     },
 
     isProjectBarOverFlown() {
@@ -114,10 +124,11 @@ export default {
           })
         this.store.addProject(response)
       } catch (error) {
-        this.$emit('error', error)
+        this.$emit('error', error.message)
       } finally {
         this.newProjectName = ""
         this.creatingNewProject = false
+        this.projectBarOverFlown = this.isProjectBarOverFlown()
       }
     },
 
@@ -137,11 +148,11 @@ export default {
         )
 
       } catch (error) {
-        console.log(error)
-        this.$emit('error', error)
+        this.$emit('error', error.message)
       } finally {
         this.newProjectName = ""
         this.renamingNewProject = false
+        this.projectBarOverFlown = this.isProjectBarOverFlown()
       }
     },
 
@@ -159,6 +170,7 @@ export default {
       } catch (e) {
         console.log(e)
       }
+      this.projectBarOverFlown = this.isProjectBarOverFlown()
     },
 
     async beforeCreatingProject() {
@@ -212,6 +224,7 @@ export default {
       }
       let now = new Date()
       this.touchTimerStart = now.valueOf()
+      console.log(this.touchTimerStart)
     },
 
     handleTouchEnd(index) {
@@ -256,7 +269,7 @@ export default {
 
 <template>
   <div tabindex="-1" class="ui inverted menu">
-    <div class="flex-wrapper">
+    <div v-if="!isLoading" class="flex-wrapper">
       <div v-if="isAuthenticated" class="ui inverted menu">
         <div class="item collapsable">
           <i class="user icon"></i>
@@ -281,18 +294,6 @@ export default {
         @wheel.prevent.stop="(event) => handleWheel(event)"
         @scroll.prevent.stop
       >
-        <a
-          tabindex="0"
-          data-test-id="deleteProject"
-          class="item"
-          title="Delete selected project."
-          @click="setProjectToDelete"
-          @keydown.space.prevent="setProjectToDelete"
-          v-if="store.selectedProject"
-        >
-          <i class="delete icon"></i>
-        </a>
-
         <div
           class="link item taskList"
           v-for="(project, index) in store.projects"
@@ -352,6 +353,16 @@ export default {
             <span v-else>
               <i class="tasks icon collapsable"></i>
               {{ project.name }} ({{ project.tasks.filter(task => !task.completed).length }})
+              <a
+                v-if="store.selectedProject.name === project.name"
+                tabindex="0"
+                data-test-id="deleteProject"
+                title="Delete selected project."
+                @click="setProjectToDelete"
+                @keydown.space.prevent="setProjectToDelete"
+              >
+                <i class="inverted delete icon"></i>
+              </a>
             </span>
           </FadeTransition>
         </div>
@@ -371,7 +382,7 @@ export default {
                 data-test-id="createNewTaskListInput"
                 v-model="newProjectName"
                 type="text"
-                placeholder="New task list name..."
+                placeholder="New project name..."
                 @keydown.delete="!newProjectName && (creatingNewProject = false)"
                 @keydown.esc="creatingNewProject = false"
                 @keydown.space.stop
@@ -390,12 +401,15 @@ export default {
               </div>
             </div>
           </FadeTransition>
-          <i v-if="!creatingNewProject" class="plus icon"></i>
+          <div class="addnewprojectbutton">
+            <span v-if="!creatingNewProject && numberOfProjects === 0">Create your first project</span>
+            <i v-if="!creatingNewProject" class="plus icon"></i>
+          </div>
         </a>
       </div>
       <div class="ui inverted menu right">
         <div
-          v-if="isAuthenticated && isProjectBarOverFlown"
+          v-if="projectBarOverFlown && isAuthenticated"
           @mousedown="handleMouseDown(handleScrollRight)"
           @mouseup="handleMouseUp()"
           @touchstart.prevent.stop="handleMouseDown(handleScrollRight)"
@@ -415,12 +429,17 @@ export default {
         v-if="projectToDelete"
         @no="resetProjectToDelete"
         @yes="deleteProject"
-        :message="'Are you sure you want to delete ' + projectToDelete.name + '?'"
+        :message="'Are you sure you want to delete project ' + projectToDelete.name + '?'"
       ></Warning>
     </div>
   </FadeTransition>
 </template>
 <style scoped>
+.addnewprojectbutton {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
 .menu {
   justify-content: center;
   flex: auto;
@@ -439,8 +458,7 @@ export default {
 }
 .flex-wrapper {
   display: flex;
-  flex: auto;
-  justify-content: center;
+  flex: initial;
   max-width: min(100%, 960px);
 }
 
