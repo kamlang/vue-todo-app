@@ -29,7 +29,6 @@ export default {
       deletingTask: false,
       taskToDelete: null,
       areTasksDraggable: true,
-
       draggedTaskIndex: -1,
       hoveredTaskIndex: -1,
       touchTimerStart: 0,
