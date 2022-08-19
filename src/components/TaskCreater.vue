@@ -16,9 +16,11 @@ export default {
   data() {
     return {
       store,
-      newTaskBody: "",
-      newTaskTitle: "",
-      newTaskDueDate: "",
+      newTask: {
+        body: "",
+        title: "",
+        dueDate: "",
+      },
       showCompletedTasks: false,
       showTaskForm: false,
       selectedProject: Object
@@ -30,9 +32,9 @@ export default {
     selectedProject() {
       this.showTaskForm = false
       this.$refs.toggleShowCompletedCheckbox.checked = false
-      this.newTaskDueDate = ""
-      this.newTaskBody = ""
-      this.newTaskTitle = ""
+      this.newTask.dueDate = ""
+      this.newTask.body = ""
+      this.newTask.title = ""
     },
   },
 
@@ -48,7 +50,7 @@ export default {
     },
 
     handleSetDueDate(date) {
-      this.newTaskDueDate = date
+      this.newTask.dueDate = date
     },
 
     async addTask() {
@@ -60,16 +62,16 @@ export default {
           "/addTask",
           {
             name: this.store.selectedProject.name,
-            title: this.newTaskTitle,
-            body: this.newTaskBody,
-            dueDate: this.newTaskDueDate,
+            title: this.newTask.title,
+            body: this.newTask.body,
+            dueDate: this.newTask.dueDate,
           },
         )
         this.store.addTaskToSelectedProject(response)
         this.$emit('error', '')
-        this.newTaskBody = ""
-        this.newTaskDueDate = ""
-        this.newTaskTitle = ""
+        this.newTask.body = ""
+        this.newTask.dueDate = ""
+        this.newTask.title = ""
         this.showTaskForm = false
       } catch (e) {
         console.log(e)
@@ -112,7 +114,7 @@ export default {
         <div class="field">
           <input
             data-test-id="task-title"
-            v-model="newTaskTitle"
+            v-model="newTask.title"
             placeholder="Give a title to this task..."
           />
         </div>
@@ -121,17 +123,17 @@ export default {
           <textarea
             data-test-id="task-body"
             rows="8"
-            v-model="newTaskBody"
+            v-model="newTask.body"
             placeholder="Add a task..."
           ></textarea>
         </div>
         <Calendar
           :active="true"
-          :injectedDueDate="newTaskDueDate"
+          :injectedDueDate="newTask.dueDate"
           @dueDateSet="handleSetDueDate
           "
         ></Calendar>
-        <div v-if="newTaskBody" class="field">
+        <div v-if="newTask.body" class="field">
           <div
             data-test-id="add-task-button"
             @submit.prevent
