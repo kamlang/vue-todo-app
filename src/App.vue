@@ -35,8 +35,12 @@ export default {
     <div class="wrapper">
       <Loading v-if="isLoading"></Loading>
       <Unauthenticated v-if="!isAuthenticated && !isLoading"></Unauthenticated>
-      <Error v-if="errorMessage" @closed="errorMessage = ''" :errorMessage="errorMessage"></Error>
-      <TaskList @error="setErrorMessage" v-if="isAuthenticated" />
+      <Error
+        v-if="isAuthenticated && errorMessage"
+        @closed="errorMessage = ''"
+        :errorMessage="errorMessage"
+      ></Error>
+      <TaskList v-if="isAuthenticated" @error="setErrorMessage" />
     </div>
   </div>
 </template>
