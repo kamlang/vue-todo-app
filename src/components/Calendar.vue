@@ -112,8 +112,8 @@ export default {
     },
 
     computedCalendar() {
-      let currentMonth = this.calendar.getCurrentMonth()
-      let [daysInitial, ...daysOfMonth] = currentMonth
+      let calendar = this.calendar.getCalendar()
+      let [daysInitial, ...daysOfMonth] = calendar
       return { daysInitial, daysOfMonth }
     }
   }
