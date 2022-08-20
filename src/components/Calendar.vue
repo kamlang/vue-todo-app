@@ -2,6 +2,8 @@
 import Calendar from "calendar/dist/calendar"
 import dayjs from "dayjs"
 import FadeTransition from "./FadeTransition.vue"
+import localizedFormat from 'dayjs/plugin/localizedFormat'
+dayjs.extend(localizedFormat)
 export default {
   components: {
     FadeTransition
@@ -11,7 +13,7 @@ export default {
     return {
       calendar: new Calendar(),
       showCalendar: false,
-      dueDate: "",
+      dueDate: null,
       time: "00:00",
       isTimeValid: true
     }
@@ -48,13 +50,13 @@ export default {
     },
 
     setDueDate(selectedDate) {
-      this.dueDate = new Date(selectedDate)
+      this.dueDate = selectedDate
       this.$emit('dueDateSet', this.dueDate.toString())
       this.showCalendar = false
     },
 
     unSetDueDate() {
-      this.dueDate = ""
+      this.dueDate = null
       this.time = "00:00"
       this.showCalendar = false
       this.$emit('dueDateSet', "")
