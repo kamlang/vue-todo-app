@@ -1,5 +1,5 @@
 <script>
-import TaskBar from "./components/TaskBar.vue"
+import ProjectBar from "./components/ProjectBar.vue"
 import Error from "./components/Error.vue"
 import TaskList from "./components/TaskList.vue"
 import Loading from "./components/Loading.vue"
@@ -7,7 +7,7 @@ import Unauthenticated from "./components/Unauthenticated.vue"
 import { store } from "./state/state"
 export default {
   components: {
-    TaskBar,
+    ProjectBar,
     Error,
     Loading,
     Unauthenticated,
@@ -31,7 +31,7 @@ export default {
 
 <template>
   <div class="main container">
-    <TaskBar @error="setErrorMessage"></TaskBar>
+    <ProjectBar @error="setErrorMessage"></ProjectBar>
     <div class="wrapper">
       <Loading v-if="isLoading"></Loading>
       <Unauthenticated v-if="!isAuthenticated && !isLoading"></Unauthenticated>
