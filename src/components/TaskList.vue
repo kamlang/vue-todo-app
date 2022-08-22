@@ -6,6 +6,8 @@ import FadeTransition from "./FadeTransition.vue"
 import Calendar from "./Calendar.vue"
 import LocalizedFormat from 'dayjs/plugin/localizedFormat'
 import Notification from "./Notification.vue"
+import MarkdownText from './MarkdownText.vue'
+import { useMarkdown } from "../composition/markdown/markdown"
 
 import { store } from '../state/state'
 import { httpRequest } from "../lib/httpRequest"
@@ -17,7 +19,14 @@ export default {
     Notification,
     Calendar,
     Warning,
-    FadeTransition
+    FadeTransition,
+    MarkdownText
+  },
+  setup() {
+    const { renderMarkdownText } = useMarkdown()
+    return {
+      renderMarkdownText
+    }
   },
   data() {
     return {
@@ -345,7 +354,8 @@ export default {
               @mouseenter="toggleDraggable"
               @mouseleave="toggleDraggable"
               style="white-space: pre-line;"
-            >{{ task.body }}</span>
+              v-html="renderMarkdownText(task.body)"
+            ></span>
             <FadeTransition>
               <span
                 v-if="deletingTask && taskToDelete._id === task._id"
@@ -371,15 +381,13 @@ export default {
                 </div>
                 <div class="field">
                   <label></label>
-                  <textarea
+                  <MarkdownText
+                    :textAreaDataTestId="'editInputBox'"
+                    :taskBody="task.body"
+                    @task-body-set="(taskBody) => { taskToEdit.body = taskBody }"
                     @touchstart.self="(event) => event.target.focus()"
                     @blur.self="(event) => event.target.blur()"
-                    data-test-id="editInputBox"
-                    rows="6"
-                    v-model="taskToEdit.body"
-                  >
-          {{ task.body }}
-          </textarea>
+                  ></MarkdownText>
                 </div>
                 <Calendar
                   :active="store.selectedTask === task"

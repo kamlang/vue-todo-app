@@ -1,6 +1,7 @@
 
 <script>
 import Calendar from "./Calendar.vue"
+import MarkdownText from './MarkdownText.vue'
 import FadeTransition from "./FadeTransition.vue"
 
 import { store } from '../state/state'
@@ -10,7 +11,8 @@ export default {
   emits: ['toggle-show-completed', 'error'],
   components: {
     Calendar,
-    FadeTransition
+    FadeTransition,
+    MarkdownText
   },
 
   data() {
@@ -120,12 +122,10 @@ export default {
         </div>
         <div class="field">
           <label></label>
-          <textarea
-            data-test-id="task-body"
-            rows="8"
-            v-model="newTask.body"
-            placeholder="Add a task..."
-          ></textarea>
+          <MarkdownText
+            :dataTestId="'task-body'"
+            @task-body-set="(taskBody) => { newTask.body = taskBody }"
+          ></MarkdownText>
         </div>
         <Calendar
           :active="true"
