@@ -73,7 +73,7 @@ export default {
         const accessToken = await this.$auth0.getAccessTokenSilently();
         const response = await httpRequest(accessToken,
           "get",
-          "/getProjects")
+          "/projects")
         this.store.setProjects(response)
       } catch (e) {
         console.log(e)
@@ -103,7 +103,7 @@ export default {
         const accessToken = await this.$auth0.getAccessTokenSilently();
         await httpRequest(accessToken,
           "patch",
-          "/updateProjectsOrder",
+          "/projects",
           {
             projects: this.store.projects.map(project => project._id)
           })
@@ -118,7 +118,7 @@ export default {
         const accessToken = await this.$auth0.getAccessTokenSilently();
         const response = await httpRequest(accessToken,
           "put",
-          "/addProject",
+          "/projects",
           {
             name: this.newProjectName
           })
@@ -137,7 +137,7 @@ export default {
       try {
         await httpRequest(accessToken,
           "patch",
-          "/updateProject",
+          "/project",
           {
             oldName: this.store.selectedProject.name,
             newName: this.newProjectName
@@ -161,7 +161,7 @@ export default {
         const accessToken = await this.$auth0.getAccessTokenSilently();
         await httpRequest(accessToken,
           "delete",
-          "/deleteProject",
+          "/project",
           {
             name: this.projectToDelete.name
           })

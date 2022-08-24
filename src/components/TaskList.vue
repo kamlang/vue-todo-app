@@ -105,7 +105,7 @@ export default {
         const accessToken = await this.$auth0.getAccessTokenSilently();
         await httpRequest(accessToken,
           "patch",
-          "/updateTaskOrder",
+          "/tasks",
           {
             name: this.store.selectedProject.name,
             tasks: this.store.selectedProject.tasks.map(task => task._id)
@@ -122,7 +122,7 @@ export default {
         const accessToken = await this.$auth0.getAccessTokenSilently();
         await httpRequest(accessToken,
           "delete",
-          "/deleteTask",
+          "/task",
           {
             _id: this.taskToDelete._id
           },
@@ -140,7 +140,7 @@ export default {
         const accessToken = await this.$auth0.getAccessTokenSilently();
         await httpRequest(accessToken,
           "patch",
-          "/updateTask",
+          "/task",
           this.taskToEdit,
         )
         this.store.updateTask(this.taskToEdit, index)
@@ -351,16 +351,12 @@ export default {
             </FadeTransition>
             <span
               v-if="showTaskBody(task)"
-              @mouseenter="toggleDraggable"
-              @mouseleave="toggleDraggable"
-              style="white-space: pre-line;"
+              @mouseenter.capture="toggleDraggable"
+              @mouseleave.capture="toggleDraggable"
               v-html="renderMarkdownText(task.body)"
             ></span>
             <FadeTransition>
-              <span
-                v-if="deletingTask && taskToDelete._id === task._id"
-                style="white-space: pre-line;"
-              >
+              <span v-if="deletingTask && taskToDelete._id === task._id">
                 <Warning
                   @yes="deleteTask"
                   @no="cancelDeleteTask"
@@ -427,7 +423,26 @@ export default {
 <style>
 :root {
   --teal: #e1f7f7;
+  --dark-teal: #22aaaa;
   --green-completed: #e5f9e7;
+}
+.taskelement p,
+.taskelement ul {
+  margin: 0 !important;
+}
+
+.taskelement a {
+  color: var(--dark-teal);
+  font-weight: bold !important;
+}
+.taskelement a:hover {
+  text-decoration: underline;
+}
+
+.taskelement mark {
+  background-color: var(--dark-teal) !important;
+  border-radius: 5px;
+  padding: 0.2em;
 }
 </style>
 <style scoped>
@@ -475,6 +490,7 @@ export default {
   min-height: 70px !important;
   border-radius: 0px 0px 10px 10px !important;
   opacity: 1;
+  word-break: break-word;
 }
 
 .taskelement-active {

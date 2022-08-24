@@ -61,7 +61,7 @@ export default {
 
         const response = await httpRequest(accessToken,
           "put",
-          "/addTask",
+          "/task",
           {
             name: this.store.selectedProject.name,
             title: this.newTask.title,
@@ -123,7 +123,7 @@ export default {
         <div class="field">
           <label></label>
           <MarkdownText
-            :dataTestId="'task-body'"
+            :textAreaDataTestId="'task-body'"
             @task-body-set="(taskBody) => { newTask.body = taskBody }"
           ></MarkdownText>
         </div>
