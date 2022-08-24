@@ -1,4 +1,5 @@
 import { config, mount, flushPromises } from '@vue/test-utils'
+import { nextTick } from 'vue'
 import { describe, it, expect, vi, beforeEach, beforeAll, afterEach } from "vitest";
 import App from './App.vue';
 import { httpRequest } from './lib/httpRequest'
@@ -39,15 +40,14 @@ afterEach(async () => {
   httpRequest = vi.fn().mockReset()
 })
 
-
 describe("", () => {
-  it("Testing rendering of user data and creation of a task list", async () => {
+  it("Testing rendering of user data and creation of a project", async () => {
 
     /*  User arrives on the main page his data are supposed to be populated.
      User has two projects named "project1" with a task "bodyTest" and "TaskList2" 
      Meaning his task list has to include both.
      And he must have a task "bodyTest" rendered on project1.
-     Then he creates a new task list named "taskTest", 
+     Then he creates a new project named "taskTest", 
      name should be added in the taskbar and the task list should be selected.
      meaning he should not have any task listed. */
 
@@ -220,8 +220,9 @@ describe("", () => {
     let markAsCompletedButton = wrapper.get('[data-test-id=markAsCompletedButton]')
     await editTaskButton.trigger('mouseup')
     let editInputBox = wrapper.get('[data-test-id=editInputBox]')
+    expect(editInputBox.text()).toBe("bodyTest1")
     await editInputBox.setValue('editBodyTest')
-
+    expect(editInputBox.text()).toBe("editBodyTest")
     /* Editing the task and pressing cancel, task should remain unchanged
     (Added later on as regression test)*/
 
@@ -230,8 +231,9 @@ describe("", () => {
     await cancelEditButton.trigger('click')
     await taskBody.trigger('click')
     await editTaskButton.trigger('mouseup')
-
+    editInputBox = wrapper.get('[data-test-id=editInputBox]')
     expect(editInputBox.text()).toBe("bodyTest1")
+
     await editInputBox.setValue('editBodyTest')
     await confirmEditButton.trigger('click')
     await flushPromises()
@@ -557,6 +559,10 @@ describe("", () => {
     let firstTaskHeader = wrapper.get('[data-test-id=taskHeader-0]')
     expect(firstTask.text()).toBe("newTaskBody")
     expect(firstTaskHeader.text()).toContain("newTaskTitle")
+
+  })
+
+  it("Testing rendering of markdowns task list", async () => {
 
   })
 })
