@@ -1,5 +1,5 @@
 <script>
-import Calendar from "calendar/dist/calendar"
+import Calendar from "../lib/calendar"
 import dayjs from "dayjs"
 import FadeTransition from "./FadeTransition.vue"
 import localizedFormat from 'dayjs/plugin/localizedFormat'
