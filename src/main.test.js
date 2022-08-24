@@ -417,7 +417,7 @@ describe("", () => {
       if (action === 'confirm') {
         await confirmEditButton.trigger('click')
         await flushPromises()
-        expect(httpRequest).toHaveBeenNthCalledWith(2, expect.anything(), "patch", "/updateTask",
+        expect(httpRequest).toHaveBeenNthCalledWith(2, expect.anything(), "patch", "/task",
           expect.objectContaining({ "dueDate": expect.stringMatching("Jul 26 2024 10:42") }))
 
         await secondTask.trigger('click')
