@@ -3,24 +3,40 @@
     <form action="_blank">
       <span @click="handleDialogClose" class="material-symbols-outlined close-button">close</span>
       <label for="link">URL</label>
-      <input autofocus type="text" v-model="link" id="link" name="link" />
-
+      <input
+        ref="urlInput"
+        data-test-id="urlDialog"
+        type="text"
+        v-model="link"
+        id="link"
+        name="link"
+      />
       <label for="title">Title</label>
-      <input type="text" v-model="title" id="title" name="title" />
-      <button @submit.stop.prevent @click="handleMarkdownSet">Select</button>
+      <input data-test-id="titleDialog" type="text" v-model="title" id="title" name="title" />
+      <div
+        class="ui button selectButton"
+        data-test-id="confirmDialog"
+        @click="handleMarkdownSet"
+      >Select</div>
     </form>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 const link = ref("")
 const title = ref("")
+const urlInput = ref<HTMLInputElement>()
 const emit = defineEmits(['markdown-set', 'close-dialog'])
+
+onMounted(() => {
+  if (urlInput.value) urlInput.value.focus()
+})
 
 function handleDialogClose() {
   emit('close-dialog')
 }
+
 function handleMarkdownSet() {
   emit('markdown-set', { link, title })
 }
@@ -66,10 +82,9 @@ input {
   display: block;
 }
 
-button {
+.selectButton {
   float: right;
   margin-top: 1em;
-  padding: 0.3em 0.5em;
 }
 
 .material-symbols-outlined {
