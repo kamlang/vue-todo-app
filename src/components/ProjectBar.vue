@@ -118,7 +118,7 @@ export default {
         const accessToken = await this.$auth0.getAccessTokenSilently();
         const response = await httpRequest(accessToken,
           "put",
-          "/projects",
+          "/project",
           {
             name: this.newProjectName
           })
