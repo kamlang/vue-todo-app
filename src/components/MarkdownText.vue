@@ -19,6 +19,7 @@
 
     <MarkdownLinkDialog
       v-if="showDialog"
+      @keydown.esc="resetState"
       @close-dialog="resetState"
       @markdown-set="handleMarkdownSet"
     ></MarkdownLinkDialog>
