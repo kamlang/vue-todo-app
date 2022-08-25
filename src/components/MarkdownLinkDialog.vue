@@ -16,6 +16,7 @@
       <div
         class="ui button selectButton"
         data-test-id="confirmDialog"
+        tabindex="1"
         @click="handleMarkdownSet"
       >Select</div>
     </form>
