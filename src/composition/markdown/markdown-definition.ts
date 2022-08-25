@@ -45,6 +45,12 @@ export const markdownsDefinition: Markdowns = {
     title: "Highlight:",
     keyboardShortcut: "Ctrl-m"
   },
+  hr: {
+    template: "****$",
+    icon: "horizontal_rule",
+    title: "Horizontal row:",
+    keyboardShortcut: "Ctrl-r"
+  }
 }
 /*
 image: {
