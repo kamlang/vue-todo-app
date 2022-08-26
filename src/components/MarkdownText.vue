@@ -2,12 +2,12 @@
   <div @keydown="handleKeyDown" class="markdown-area">
     <div data-test-id="markdownToolbar" class="markdown-area__toolbar">
       <MarkdownToolbarItem
-        v-for="markdownName in Object.keys(markdowns)"
-        :title="`${markdowns[markdownName].title} ${markdowns[markdownName].keyboardShortcut}`"
+        v-for="markdownName in usedMarkdownsNames"
+        :title="`${getMarkdownDefinition(markdownName).title} ${getMarkdownDefinition(markdownName).keyboardShortcut}`"
         :data-test-id="`markdown-${markdownName}`"
-        :key="markdowns[markdownName].title"
+        :key="getMarkdownDefinition(markdownName).title"
         @click.prevent.stop="createMarkdown(markdownName)"
-      >{{ markdowns[markdownName].icon }}</MarkdownToolbarItem>
+      >{{ getMarkdownDefinition(markdownName).icon }}</MarkdownToolbarItem>
     </div>
     <textarea
       :data-test-id="textAreaDataTestId"
@@ -50,16 +50,16 @@
 
 <script setup lang="ts">
 import { ref, nextTick, watch, watchEffect } from 'vue'
-import { useMarkdown } from "../composition/markdown/markdown"
+import { useMarkdown } from "../composition/markdown/useMarkdown"
 import MarkdownToolbarItem from "./MarkdownToolbarItem.vue";
 import MarkdownLinkDialog from "./MarkdownLinkDialog.vue"
-import type { SelectedMarkdown, MarkdownName, Markdowns } from "../composition/markdown/types"
+import { keyboardShortCuts, getMarkdownDefinition } from '../composition/markdown/markdown-definition'
+import type { MarkdownProps, MarkdownName, } from "../composition/markdown/types"
 
 const { markdownText,
   renderedMarkdownText,
-  insertMarkdownAt,
-  wrapTextInMarkdown,
-  markdowns
+  insertMarkdownAndGetCursorPosition,
+  wrapTextInMarkdownAndGetCursorPosition,
 } = useMarkdown()
 
 const emit = defineEmits(['taskBodySet'])
@@ -70,7 +70,6 @@ const props = defineProps({
 
 watchEffect(() => {
   if (props.taskBody) {
-    console.log(props.taskBody)
     markdownText.value = props.taskBody
   }
 })
@@ -86,35 +85,13 @@ const textArea = ref<HTMLTextAreaElement>()
 const showDialog = ref(false)
 const showPreview = ref(false)
 const previewBox = ref<HTMLDivElement>()
-const selectedMarkdown = ref<SelectedMarkdown>()
+const selectedMarkdownProps = ref<MarkdownProps>()
+const usedMarkdownsNames = ["bold", "italic", "strike", "link", "list", "orderedList", "mark", "hr"]
 
-class KeyBoardShortcutMap {
-  // keyboard shortcut are defined as ctrl-k.
-  _modifierLetterSeparator = "-"
-  shortcutKeyName = new Map<string, string>()
-  markdowns: Markdowns
-
-  constructor(markdowns: Markdowns) {
-    this.markdowns = markdowns
-    this._build()
-  }
-  _build() {
-    for (let markdownName in this.markdowns) {
-      let [_, letter] = this.markdowns[markdownName]
-        .keyboardShortcut.split(this._modifierLetterSeparator)
-      this.shortcutKeyName.set(letter, markdownName)
-    }
-  }
-  get(letter: string) {
-    return this.shortcutKeyName.get(letter)
-  }
-}
-
-const kbm = new KeyBoardShortcutMap(markdowns.value)
 
 function handleKeyDown(event: KeyboardEvent) {
   if (event.key && event.ctrlKey) {
-    let markdownName = kbm.get(event.key)
+    let markdownName = keyboardShortCuts.get(event.key)
     if (markdownName) {
       event.preventDefault()
       createMarkdown(markdownName)
@@ -127,21 +104,21 @@ async function createMarkdown(markdownName: MarkdownName) {
   const selectionLength = await getSelectionLength() as number
   const cursorPosition = await getCursorPosition() as number
   if (markdownName === 'link' || markdownName === 'image') {
-    const URLHasBeenDefined = selectedMarkdown.value?.link
-    if (URLHasBeenDefined && selectedMarkdown.value) {
-      newCursorPosition = insertMarkdownAt(selectedMarkdown.value, cursorPosition)
+    const URLHasBeenDefined = selectedMarkdownProps.value?.link
+    if (URLHasBeenDefined && selectedMarkdownProps.value) {
+      newCursorPosition = insertMarkdownAndGetCursorPosition(selectedMarkdownProps.value, cursorPosition)
     } else {
       showDialog.value = !showDialog.value
-      selectedMarkdown.value = { name: markdownName }
-      selectedMarkdown.value.cursorPosition = cursorPosition
+      selectedMarkdownProps.value = { name: markdownName }
+      selectedMarkdownProps.value.cursorPosition = cursorPosition
       return
     }
   } else if (selectionLength === 0) {
-    selectedMarkdown.value = { name: markdownName }
-    newCursorPosition = insertMarkdownAt(selectedMarkdown.value, cursorPosition)
+    selectedMarkdownProps.value = { name: markdownName }
+    newCursorPosition = insertMarkdownAndGetCursorPosition(selectedMarkdownProps.value, cursorPosition)
   } else {
-    selectedMarkdown.value = { name: markdownName }
-    newCursorPosition = wrapTextInMarkdown(selectedMarkdown.value, cursorPosition,
+    selectedMarkdownProps.value = { name: markdownName }
+    newCursorPosition = wrapTextInMarkdownAndGetCursorPosition(selectedMarkdownProps.value, cursorPosition,
       selectionLength)
   }
   resetState()
@@ -171,16 +148,16 @@ async function setCursorPosition(cursorPosition: number) {
 
 function resetState() {
   showDialog.value = false
-  selectedMarkdown.value = {}
+  selectedMarkdownProps.value = {}
 }
 
 async function handleMarkdownSet(options: any) {
   let { link, title } = options
-  if (selectedMarkdown.value) {
-    selectedMarkdown.value.link = link
-    selectedMarkdown.value.title = title
-    if (selectedMarkdown.value.name) {
-      createMarkdown(selectedMarkdown.value.name)
+  if (selectedMarkdownProps.value) {
+    selectedMarkdownProps.value.link = link
+    selectedMarkdownProps.value.title = title
+    if (selectedMarkdownProps.value.name) {
+      createMarkdown(selectedMarkdownProps.value.name)
     }
   }
 }

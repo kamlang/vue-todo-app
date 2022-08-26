@@ -1,11 +1,10 @@
-import { useMarkdown } from "./markdown"
+import { useMarkdown } from "./useMarkdown"
 import { describe, it, expect } from "vitest";
 describe("Testing useMarkdown composition function", () => {
   it("test rendering of markdown", () => {
     // Test for other markdowns.
     const { markdownText,
       renderedMarkdownText,
-      markdowns
     } = useMarkdown()
     markdownText.value = "**Arf**"
     expect(renderedMarkdownText.value).toContain("<p><strong>Arf</strong></p>")
@@ -16,16 +15,16 @@ describe("Testing useMarkdown composition function", () => {
   })
   it("testing insert markdown at.", () => {
     const { markdownText,
-      insertMarkdownAt,
+      insertMarkdownAndGetCursorPosition,
     } = useMarkdown()
 
     markdownText.value = "0123456"
-    let newPosition = insertMarkdownAt({ name: "bold" }, 2)
+    let newPosition = insertMarkdownAndGetCursorPosition({ name: "bold" }, 2)
     expect(newPosition).toBe(4)
     expect(markdownText.value).toBe("01****23456")
 
     markdownText.value = "0123456"
-    newPosition = insertMarkdownAt({ name: "strike" }, 2)
+    newPosition = insertMarkdownAndGetCursorPosition({ name: "strike" }, 2)
     expect(newPosition).toBe(4)
     expect(markdownText.value).toBe("01~~~~23456")
 
@@ -33,16 +32,16 @@ describe("Testing useMarkdown composition function", () => {
 
   it("testing insert markdown at.", () => {
     const { markdownText,
-      wrapTextInMarkdown,
+      wrapTextInMarkdownAndGetCursorPosition,
     } = useMarkdown()
 
     markdownText.value = "0123456"
-    let newPosition = wrapTextInMarkdown({ name: "bold" }, 2, 2)
+    let newPosition = wrapTextInMarkdownAndGetCursorPosition({ name: "bold" }, 2, 2)
     expect(newPosition).toBe(8)
     expect(markdownText.value).toBe("01**23**456")
 
     markdownText.value = "0123456"
-    newPosition = wrapTextInMarkdown({ name: "strike" }, 2, 2)
+    newPosition = wrapTextInMarkdownAndGetCursorPosition({ name: "strike" }, 2, 2)
     expect(newPosition).toBe(8)
     expect(markdownText.value).toBe("01~~23~~456")
 

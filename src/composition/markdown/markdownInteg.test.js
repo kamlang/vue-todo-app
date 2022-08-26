@@ -1,5 +1,4 @@
 import { config, mount, flushPromises } from '@vue/test-utils'
-import { nextTick } from 'vue'
 import { describe, it, expect, vi, beforeEach, beforeAll, afterEach } from "vitest";
 import App from '../../App.vue';
 import { httpRequest } from '../../lib/httpRequest'

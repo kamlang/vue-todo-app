@@ -4,19 +4,19 @@ export type MarkdownName = string
 export type TemplateFunction = (link: string, title?: string) => string
 export type MarkdownTemplate = TemplateFunction | string
 
-export interface MarkdownDefinition {
+export interface Markdown {
   template: MarkdownTemplate
   icon: string
   title: string
   keyboardShortcut: string
 }
 
-export interface Markdowns {
-  [index: MarkdownName]: MarkdownDefinition
+export interface MarkdownsDefinitions {
+  [index: MarkdownName]: Markdown
 }
-export interface SelectedMarkdown {
+
+export interface MarkdownProps {
   name?: MarkdownName
-  icon?: string
   title?: string
   link?: string
   cursorPosition?: number

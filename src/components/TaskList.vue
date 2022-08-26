@@ -7,7 +7,7 @@ import Calendar from "./Calendar.vue"
 import LocalizedFormat from 'dayjs/plugin/localizedFormat'
 import Notification from "./Notification.vue"
 import MarkdownText from './MarkdownText.vue'
-import { useMarkdown } from "../composition/markdown/markdown"
+import { useMarkdown } from "../composition/markdown/useMarkdown"
 
 import { store } from '../state/state'
 import { httpRequest } from "../lib/httpRequest"

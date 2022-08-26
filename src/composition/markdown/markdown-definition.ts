@@ -1,8 +1,9 @@
 /* Icons name refers to: https://fonts.google.com/icons?icon.style=Outlined
  * "$" sign use as a place holder to insert text or position cursor.
  */
-import type { Markdowns } from "./types"
-export const markdownsDefinition: Markdowns = {
+import type { MarkdownsDefinitions } from './types'
+
+const markdownsDefinitions = {
   bold: {
     template: "**$**",
     icon: "format_bold",
@@ -45,18 +46,46 @@ export const markdownsDefinition: Markdowns = {
     title: "Highlight:",
     keyboardShortcut: "Ctrl-m"
   },
-
   hr: {
     template: "\n****$",
     icon: "horizontal_rule",
     title: "Horizontal row:",
     keyboardShortcut: "Ctrl-r"
+  },
+  image: {
+    template: (link: string, title?: string) => `![${title || link}](${link})$`,
+    icon: "image",
+    title: "Insert an image:",
+    keyboardShortcut: "Ctrl-p"
+  },
+}
+
+export function getMarkdownDefinition(markdownName: string) {
+  if (markdownsDefinitions[markdownName]) {
+    return markdownsDefinitions[markdownName]
+  }
+  throw Error(`${markdownName} not found.`)
+}
+
+class KeyBoardShortcuts {
+  MODIFIER_LETTER_SEPARATOR = "-"
+  _keyboardShortcuts = new Map<string, string>()
+  markdowns: MarkdownsDefinitions
+
+  constructor(markdowns: MarkdownsDefinitions) {
+    this.markdowns = markdowns
+    this._build()
+  }
+  _build() {
+    for (let markdownName in this.markdowns) {
+      let [_, letter] = this.markdowns[markdownName]
+        .keyboardShortcut.split(this.MODIFIER_LETTER_SEPARATOR)
+      this._keyboardShortcuts.set(letter, markdownName)
+    }
+  }
+  get(letter: string) {
+    return this._keyboardShortcuts.get(letter)
   }
 }
-/*
-image: {
-  template: (link: string, title?: string) => `![${title || link}](${link})$`,
-  icon: "image",
-  title: "Insert an image:",
-  keyboardShortcut: "Ctrl-p"
-},*/
+
+export const keyboardShortCuts = new KeyBoardShortcuts(markdownsDefinitions)
