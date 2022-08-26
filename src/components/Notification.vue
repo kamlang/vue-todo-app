@@ -1,13 +1,4 @@
-<script>
-import FadeTransition from "./FadeTransition.vue"
-export default {
-  emits: ['markTaskAsCompleted', 'dismissTaskReminder'],
-  components: { FadeTransition },
-  props: {
-    task: Object
-  }
-}
-</script>
+
 
 <template>
   <FadeTransition>
@@ -16,10 +7,7 @@ export default {
         <div data-test-id="notification-container" class="flex-container content">
           <i class="tasks icon"></i>
           <b>{{ task.projectName }}:</b>
-          <br />
-          <q>
-            <i>{{ task.body }}</i>
-          </q>
+          <div class="task-body" v-html="renderedMarkdownText"></div>
         </div>
         <div class="flex-container buttons">
           <div
@@ -43,6 +31,28 @@ export default {
     </div>
   </FadeTransition>
 </template>
+
+<script setup lang=ts>
+import { useMarkdown } from "../composition/markdown/useMarkdown";
+import FadeTransition from "./FadeTransition.vue"
+import { onMounted, defineProps, defineEmits } from 'vue'
+
+const { markdownText, renderedMarkdownText } = useMarkdown()
+const emit = defineEmits(['markTaskAsCompleted', 'dismissTaskReminder'])
+const props = defineProps({
+  task: { type: Object, required: true }
+})
+
+onMounted(() => {
+  markdownText.value = props.task.body
+})
+
+</script>
+<style>
+.task-body * {
+  margin: 0 !important;
+}
+</style>
 <style scoped>
 .flex-container.buttons {
   display: flex;
@@ -67,5 +77,9 @@ export default {
   .flex-container.buttons {
     justify-content: center;
   }
+}
+.task-body {
+  padding-left: 1em;
+  font-style: italic;
 }
 </style>
