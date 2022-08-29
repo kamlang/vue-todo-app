@@ -46,7 +46,7 @@ const _markdownsDefinitions = {
     keyboardShortcut: "m"
   },
   hr: {
-    template: "\n****$",
+    template: "\n****\n$",
     icon: "horizontal_rule",
     title: "Horizontal row:",
     keyboardShortcut: "r"
