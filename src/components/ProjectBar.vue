@@ -268,9 +268,9 @@ export default {
 </script>
 
 <template>
-  <div tabindex="-1" class="ui inverted menu">
+  <div tabindex="-1" class="ui inverted menu project-bar">
     <div v-if="!isLoading" class="flex-wrapper">
-      <div v-if="isAuthenticated" class="ui inverted menu">
+      <div v-if="isAuthenticated" class="ui inverted menu left">
         <div class="item collapsable">
           <i class="user icon"></i>
           {{ auth0User.nickname }}
@@ -435,6 +435,11 @@ export default {
   </FadeTransition>
 </template>
 <style scoped>
+.project-bar {
+  min-width: 100vw;
+  position: fixed;
+  z-index: 1000;
+}
 .addnewprojectbutton {
   display: flex;
   align-items: center;
@@ -445,6 +450,7 @@ export default {
   flex: auto;
 }
 .taskmenu {
+  flex: 1 0 auto !important;
   justify-content: flex-start;
   min-height: 50px;
   overflow-x: hidden !important;
@@ -458,13 +464,14 @@ export default {
 }
 .flex-wrapper {
   display: flex;
-  flex: initial;
+  justify-content: space-between;
   max-width: min(100%, 960px);
+  min-width: min(100%, 960px);
 }
 
 .menu .menu.right,
 .menu .menu.left {
-  flex: 1 0 auto !important;
+  flex: 0 0 auto !important;
 }
 .horizontal-shake {
   animation: horizontal-shaking 0.5s infinite;
