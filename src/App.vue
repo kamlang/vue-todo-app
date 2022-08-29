@@ -56,6 +56,7 @@ export default {
   );
 }
 .wrapper {
+  margin-top: 5em;
   max-width: min(95%, 900px);
   margin-left: auto;
   margin-right: auto;
