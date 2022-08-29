@@ -35,7 +35,7 @@
 <script setup lang=ts>
 import { useMarkdown } from "../composition/markdown/useMarkdown";
 import FadeTransition from "./FadeTransition.vue"
-import { onMounted, defineProps, defineEmits } from 'vue'
+import { onMounted } from 'vue'
 
 const { markdownText, renderedMarkdownText } = useMarkdown()
 const emit = defineEmits(['markTaskAsCompleted', 'dismissTaskReminder'])
