@@ -3,11 +3,11 @@
     <div data-test-id="markdownToolbar" class="markdown-area__toolbar">
       <MarkdownToolbarItem
         v-for="markdownName in usedMarkdownsNames"
-        :title="`${getMarkdownDefinition(markdownName).title} ${getMarkdownDefinition(markdownName).keyboardShortcut}`"
         :data-test-id="`markdown-${markdownName}`"
-        :key="getMarkdownDefinition(markdownName).title"
-        @click.prevent.stop="createMarkdown(markdownName)"
-      >{{ getMarkdownDefinition(markdownName).icon }}</MarkdownToolbarItem>
+        :key="getMarkdown(markdownName).title"
+        :title="`${getMarkdown(markdownName).title} Ctrl-${getMarkdown(markdownName).keyboardShortcut}`"
+        @click.prevent.stop="createMarkdownAndSetCursorPosition(markdownName)"
+      >{{ getMarkdown(markdownName).icon }}</MarkdownToolbarItem>
     </div>
     <textarea
       :data-test-id="textAreaDataTestId"
@@ -21,7 +21,7 @@
       v-if="showDialog"
       @keydown.esc="resetState"
       @close-dialog="resetState"
-      @markdown-set="handleMarkdownSet"
+      @markdown-props-set="handleMarkdownPropsSet"
     ></MarkdownLinkDialog>
 
     <div
@@ -53,7 +53,7 @@ import { ref, nextTick, watch, watchEffect } from 'vue'
 import { useMarkdown } from "../composition/markdown/useMarkdown"
 import MarkdownToolbarItem from "./MarkdownToolbarItem.vue";
 import MarkdownLinkDialog from "./MarkdownLinkDialog.vue"
-import { keyboardShortCuts, getMarkdownDefinition } from '../composition/markdown/markdown-definition'
+import { keyboardShortcuts, getMarkdown, markdownsWithATemplateFunction } from '../composition/markdown/markdown-definition'
 import type { MarkdownProps, MarkdownName, } from "../composition/markdown/types"
 
 const { markdownText,
@@ -91,21 +91,23 @@ const usedMarkdownsNames = ["bold", "italic", "strike", "link", "list", "ordered
 
 function handleKeyDown(event: KeyboardEvent) {
   if (event.key && event.ctrlKey) {
-    let markdownName = keyboardShortCuts.get(event.key)
+    let markdownName = keyboardShortcuts.get(event.key)
     if (markdownName) {
       event.preventDefault()
-      createMarkdown(markdownName)
+      createMarkdownAndSetCursorPosition(markdownName)
     }
   }
 }
 
-async function createMarkdown(markdownName: MarkdownName) {
+async function createMarkdownAndSetCursorPosition(markdownName: MarkdownName) {
   let newCursorPosition
   const selectionLength = await getSelectionLength() as number
   const cursorPosition = await getCursorPosition() as number
-  if (markdownName === 'link' || markdownName === 'image') {
-    const URLHasBeenDefined = selectedMarkdownProps.value?.link
-    if (URLHasBeenDefined && selectedMarkdownProps.value) {
+
+  if (markdownsWithATemplateFunction.includes(markdownName)) {
+    /* If markdown template is a function then user has to provide at least 
+    a URL. */
+    if (selectedMarkdownProps.value?.link) {
       newCursorPosition = insertMarkdownAndGetCursorPosition(selectedMarkdownProps.value, cursorPosition)
     } else {
       showDialog.value = !showDialog.value
@@ -151,15 +153,16 @@ function resetState() {
   selectedMarkdownProps.value = {}
 }
 
-async function handleMarkdownSet(options: any) {
-  let { link, title } = options
+async function handleMarkdownPropsSet(markdownProps: MarkdownProps) {
+  let { link, title } = markdownProps
   if (selectedMarkdownProps.value) {
     selectedMarkdownProps.value.link = link
     selectedMarkdownProps.value.title = title
-    if (selectedMarkdownProps.value.name) {
-      createMarkdown(selectedMarkdownProps.value.name)
+    if (selectedMarkdownProps.value.name &&
+      selectedMarkdownProps.value.link) {
+      createMarkdownAndSetCursorPosition(selectedMarkdownProps.value.name)
     }
-  }
+  } else resetState()
 }
 
 async function isPreviewBoxOverFlown() {

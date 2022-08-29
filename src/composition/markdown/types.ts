@@ -1,5 +1,4 @@
 // Define a Markdown, and markdown Definitions
-
 export type MarkdownName = string
 export type TemplateFunction = (link: string, title?: string) => string
 export type MarkdownTemplate = TemplateFunction | string

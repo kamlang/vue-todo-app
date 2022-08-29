@@ -1,91 +1,85 @@
 /* Icons name refers to: https://fonts.google.com/icons?icon.style=Outlined
  * "$" sign use as a place holder to insert text or position cursor.
  */
-import type { MarkdownsDefinitions } from './types'
 
-const markdownsDefinitions = {
+const _markdownsDefinitions = {
   bold: {
     template: "**$**",
     icon: "format_bold",
     title: "Bold:",
-    keyboardShortcut: "Ctrl-b"
+    keyboardShortcut: "b"
   },
   italic: {
     template: "*$*",
     icon: "format_italic", title:
       "Italic:",
-    keyboardShortcut: "Ctrl-i"
+    keyboardShortcut: "i"
   },
   strike: {
     template: "~~$~~",
     icon: "strikethrough_s",
     title: "Strike:",
-    keyboardShortcut: "Ctrl-s"
+    keyboardShortcut: "s"
   },
   link: {
     template: (link: string, title?: string) => `[${title || link}](${link})$`,
     icon: "link",
     title: "Insert a link:",
-    keyboardShortcut: "Ctrl-h"
+    keyboardShortcut: "h"
   },
   list: {
     template: "\n+ $",
     icon: "list",
     title: "Bullet list:",
-    keyboardShortcut: "Ctrl-l"
+    keyboardShortcut: "l"
   },
   orderedList: {
     template: "\n1. $",
     icon: "format_list_numbered",
     title: "Numbered list:",
-    keyboardShortcut: "Ctrl-o"
+    keyboardShortcut: "o"
   },
   mark: {
     template: "==$==",
     icon: "border_color",
     title: "Highlight:",
-    keyboardShortcut: "Ctrl-m"
+    keyboardShortcut: "m"
   },
   hr: {
     template: "\n****$",
     icon: "horizontal_rule",
     title: "Horizontal row:",
-    keyboardShortcut: "Ctrl-r"
+    keyboardShortcut: "r"
   },
   image: {
     template: (link: string, title?: string) => `![${title || link}](${link})$`,
     icon: "image",
     title: "Insert an image:",
-    keyboardShortcut: "Ctrl-p"
+    keyboardShortcut: "p"
   },
 }
 
-export function getMarkdownDefinition(markdownName: string) {
-  if (markdownsDefinitions[markdownName]) {
-    return markdownsDefinitions[markdownName]
+export function getMarkdown(markdownName: string) {
+  if (_markdownsDefinitions[markdownName]) {
+    return _markdownsDefinitions[markdownName]
   }
-  throw Error(`${markdownName} not found.`)
+  throw new Error(`${markdownName} not found.`)
 }
 
-class KeyBoardShortcuts {
-  MODIFIER_LETTER_SEPARATOR = "-"
-  _keyboardShortcuts = new Map<string, string>()
-  markdowns: MarkdownsDefinitions
+export const markdownsWithATemplateFunction = Object.entries(_markdownsDefinitions)
+  .filter(markdownDefinition => {
+    let [_, markdown] = markdownDefinition
+    return typeof markdown.template === 'function'
+  }).map(markdownDefinition => {
+    let [markdownName, _] = markdownDefinition
+    return markdownName
+  })
 
-  constructor(markdowns: MarkdownsDefinitions) {
-    this.markdowns = markdowns
-    this._build()
-  }
-  _build() {
-    for (let markdownName in this.markdowns) {
-      let [_, letter] = this.markdowns[markdownName]
-        .keyboardShortcut.split(this.MODIFIER_LETTER_SEPARATOR)
-      this._keyboardShortcuts.set(letter, markdownName)
-    }
-  }
-  get(letter: string) {
-    return this._keyboardShortcuts.get(letter)
-  }
-}
 
-export const keyboardShortCuts = new KeyBoardShortcuts(markdownsDefinitions)
+export const keyboardShortcuts = new Map<string, string>(
+  Object.entries(_markdownsDefinitions)
+    .map(markdownDefinition => {
+      let [markdownName, markdown] = markdownDefinition
+      return [markdown.keyboardShortcut, markdownName]
+    })
+)

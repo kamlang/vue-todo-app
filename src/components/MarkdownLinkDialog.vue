@@ -1,7 +1,7 @@
 <template>
-  <div class="wrapper">
+  <div @click.self="closeDialog" class="wrapper">
     <form action="_blank">
-      <span @click="handleDialogClose" class="material-symbols-outlined close-button">close</span>
+      <span @click="closeDialog" class="material-symbols-outlined close-button">close</span>
       <label for="link">URL</label>
       <input
         ref="urlInput"
@@ -17,7 +17,7 @@
         class="ui button selectButton"
         data-test-id="confirmDialog"
         tabindex="1"
-        @click="handleMarkdownSet"
+        @click="setMarkdownProps"
       >Select</div>
     </form>
   </div>
@@ -28,18 +28,18 @@ import { ref, onMounted } from 'vue'
 const link = ref("")
 const title = ref("")
 const urlInput = ref<HTMLInputElement>()
-const emit = defineEmits(['markdown-set', 'close-dialog'])
+const emit = defineEmits(['markdown-props-set', 'close-dialog'])
 
 onMounted(() => {
   if (urlInput.value) urlInput.value.focus()
 })
 
-function handleDialogClose() {
+function closeDialog() {
   emit('close-dialog')
 }
 
-function handleMarkdownSet() {
-  emit('markdown-set', { link, title })
+function setMarkdownProps() {
+  emit('markdown-props-set', { link, title })
 }
 </script>
 
