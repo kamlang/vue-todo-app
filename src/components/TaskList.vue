@@ -351,8 +351,9 @@ export default {
             </FadeTransition>
             <span
               v-if="showTaskBody(task)"
-              @mouseenter.capture="toggleDraggable"
-              @mouseleave.capture="toggleDraggable"
+              class="taskbody"
+              @mouseenter="toggleDraggable"
+              @mouseleave="toggleDraggable"
               v-html="renderMarkdownText(task.body)"
             ></span>
             <FadeTransition>
@@ -429,6 +430,12 @@ export default {
 .taskelement p,
 .taskelement ul {
   margin: 0 !important;
+}
+.taskbody {
+  display: inline-block;
+}
+.taskbody * {
+  width: fit-content;
 }
 
 .taskelement a {
