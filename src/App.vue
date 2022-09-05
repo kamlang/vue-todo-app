@@ -46,6 +46,7 @@ export default {
 </template>
 <style scoped>
 .main.container {
+  padding-top: 4em;
   height: 100vh;
   overflow: auto;
   background: rgb(27, 28, 29);
@@ -56,7 +57,6 @@ export default {
   );
 }
 .wrapper {
-  margin-top: 5em;
   max-width: min(95%, 900px);
   margin-left: auto;
   margin-right: auto;
