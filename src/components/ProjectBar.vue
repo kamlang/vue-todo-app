@@ -424,18 +424,18 @@ export default {
     </div>
   </div>
   <FadeTransition>
-    <div class="warning-wrapper">
-      <Warning
-        v-if="projectToDelete"
-        @no="resetProjectToDelete"
-        @yes="deleteProject"
-        :message="'Are you sure you want to delete project ' + projectToDelete.name + '?'"
-      ></Warning>
-    </div>
+    <Warning
+      class="warning-wrapper"
+      v-if="projectToDelete"
+      @no="resetProjectToDelete"
+      @yes="deleteProject"
+      :message="'Are you sure you want to delete project ' + projectToDelete.name + '?'"
+    ></Warning>
   </FadeTransition>
 </template>
 <style scoped>
 .project-bar {
+  top: 0;
   min-width: 100vw;
   position: fixed;
   z-index: 1000;
@@ -457,7 +457,6 @@ export default {
   overflow-y: hidden !important;
 }
 .warning-wrapper {
-  margin-bottom: 1em;
   max-width: min(95%, 900px);
   margin-left: auto;
   margin-right: auto;
